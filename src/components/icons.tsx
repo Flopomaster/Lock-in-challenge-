@@ -95,6 +95,28 @@ export function IconMinus({ className, size = 24 }: IconProps) {
   )
 }
 
+export function IconBarcode({ className, size = 24 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...stroke}>
+      <path d="M3 4v16" />
+      <path d="M7 4v16" />
+      <path d="M10.5 4v16" />
+      <path d="M13 4v16" />
+      <path d="M17 4v16" />
+      <path d="M21 4v16" />
+    </svg>
+  )
+}
+
+export function IconCamera({ className, size = 24 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...stroke}>
+      <path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1-2h7l1 2h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-9Z" />
+      <circle cx="12" cy="12.5" r="3.5" />
+    </svg>
+  )
+}
+
 export function IconEdit({ className, size = 24 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...stroke}>

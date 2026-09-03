@@ -1,12 +1,117 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import BodyStatsCard from '../components/BodyStatsCard'
 import { Card, SectionHeader } from '../components/Card'
-import { IconEdit, IconPlus, IconTrash } from '../components/icons'
+import { IconBarcode, IconEdit, IconPlus, IconTrash } from '../components/icons'
+import LabelPhotoScanner from '../components/LabelPhotoScanner'
 import { mealsRepo } from '../db/repository'
 import type { Meal, MealItem } from '../db/types'
 import { computeFromGrams, searchFoods, type FoodItem } from '../data/foods'
+import { lookupBarcode, type ScannedProduct } from '../data/openFoodFacts'
 import { formatHebrewDate, todayStr } from '../lib/dates'
+
+const BarcodeScanner = lazy(() => import('../components/BarcodeScanner'))
+
+function BarcodeItemPicker({ onAdd }: { onAdd: (item: MealItem) => void }) {
+  const [showScanner, setShowScanner] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [product, setProduct] = useState<ScannedProduct | null>(null)
+  const [grams, setGrams] = useState('100')
+
+  const computed = product ? computeFromGrams({ ...product, id: 'scanned', category: '' }, Number(grams) || 0) : null
+
+  async function handleDetect(code: string) {
+    setShowScanner(false)
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await lookupBarcode(code)
+      if (result) {
+        setProduct(result)
+        setGrams('100')
+      } else {
+        setError('המוצר לא נמצא במאגר. אפשר לנסות לצלם את תווית הערכים, או להוסיף ידנית.')
+      }
+    } catch {
+      setError('בעיית חיבור לאינטרנט בעת חיפוש המוצר. נסה שוב, או הוסף ידנית.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function add() {
+    if (!product || !computed) return
+    onAdd({ name: product.name, ...computed })
+    setProduct(null)
+    setError(null)
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {!product && (
+        <button
+          type="button"
+          onClick={() => setShowScanner(true)}
+          disabled={loading}
+          className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-1.5 text-sm text-text-dim disabled:opacity-40"
+        >
+          <IconBarcode size={16} />
+          {loading ? 'מחפש מוצר...' : 'סרוק ברקוד מוצר'}
+        </button>
+      )}
+
+      {error && <p className="text-xs text-danger">{error}</p>}
+
+      {product && computed && (
+        <div className="flex flex-col gap-2 rounded-xl border border-primary-border bg-primary-bg p-3">
+          <div className="text-sm font-medium">{product.name}</div>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={grams}
+              onChange={(e) => setGrams(e.target.value)}
+              className="w-20 rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
+            />
+            <span className="text-sm text-text-dim">גרם</span>
+          </div>
+          <div className="text-sm text-text-dim">
+            {computed.calories} קק"ל · חלבון {computed.protein} · פחמימה {computed.carbs} · שומן{' '}
+            {computed.fat}
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={add}
+              className="flex-1 rounded-lg bg-primary py-1.5 text-sm font-semibold text-primary-ink"
+            >
+              הוסף לארוחה
+            </button>
+            <button
+              type="button"
+              onClick={() => setProduct(null)}
+              className="rounded-lg border border-border px-3 py-1.5 text-sm text-text-dim"
+            >
+              ביטול
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showScanner && (
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black text-sm text-white">
+              טוען סורק...
+            </div>
+          }
+        >
+          <BarcodeScanner onDetect={handleDetect} onClose={() => setShowScanner(false)} />
+        </Suspense>
+      )}
+    </div>
+  )
+}
 
 function FoodPicker({ onAdd }: { onAdd: (item: MealItem) => void }) {
   const [query, setQuery] = useState('')
@@ -323,6 +428,8 @@ export default function Nutrition() {
         <SectionHeader title={editingId ? 'עריכת ארוחה' : 'בניית ארוחה'} />
         <div className="flex flex-col gap-3">
           <FoodPicker onAdd={addItem} />
+          <BarcodeItemPicker onAdd={addItem} />
+          <LabelPhotoScanner onAdd={addItem} />
           <ManualItemForm onAdd={addItem} />
 
           {items.length > 0 && (
