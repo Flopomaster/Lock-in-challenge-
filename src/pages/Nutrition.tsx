@@ -14,21 +14,33 @@ function FoodPicker({
 }) {
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<FoodItem | null>(null)
-  const [grams, setGrams] = useState('100')
+  const [mode, setMode] = useState<'grams' | 'units'>('grams')
+  const [quantity, setQuantity] = useState('100')
 
   const results = useMemo(() => (selected ? [] : searchFoods(query)), [query, selected])
-  const computed = selected ? computeFromGrams(selected, Number(grams) || 0) : null
+  const grams =
+    mode === 'units' && selected?.gramsPerUnit
+      ? (Number(quantity) || 0) * selected.gramsPerUnit
+      : Number(quantity) || 0
+  const computed = selected ? computeFromGrams(selected, grams) : null
 
   function pick(food: FoodItem) {
     setSelected(food)
     setQuery(food.name)
-    setGrams(String(food.gramsPerUnit ?? 100))
+    if (food.gramsPerUnit) {
+      setMode('units')
+      setQuantity('1')
+    } else {
+      setMode('grams')
+      setQuantity('100')
+    }
   }
 
   function clear() {
     setSelected(null)
     setQuery('')
-    setGrams('100')
+    setMode('grams')
+    setQuantity('100')
   }
 
   function apply() {
@@ -73,19 +85,36 @@ function FoodPicker({
           <div className="flex items-center gap-2">
             <input
               type="number"
-              value={grams}
-              onChange={(e) => setGrams(e.target.value)}
-              className="w-24 rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              className="w-20 rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
             />
-            <span className="text-sm text-text-dim">גרם</span>
-            {selected.gramsPerUnit && (
-              <button
-                type="button"
-                onClick={() => setGrams(String(selected.gramsPerUnit))}
-                className="text-xs text-secondary"
-              >
-                {selected.unitLabel} ({selected.gramsPerUnit}ג׳)
-              </button>
+            {selected.gramsPerUnit ? (
+              <div className="flex gap-1 rounded-lg bg-surface-hi p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setMode('units')}
+                  className={`rounded-md px-2 py-1 text-xs font-medium ${
+                    mode === 'units' ? 'bg-primary text-primary-ink' : 'text-text-dim'
+                  }`}
+                >
+                  {selected.unitLabel ?? 'יחידות'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode('grams')}
+                  className={`rounded-md px-2 py-1 text-xs font-medium ${
+                    mode === 'grams' ? 'bg-primary text-primary-ink' : 'text-text-dim'
+                  }`}
+                >
+                  גרם
+                </button>
+              </div>
+            ) : (
+              <span className="text-sm text-text-dim">גרם</span>
+            )}
+            {mode === 'units' && selected.gramsPerUnit && (
+              <span className="text-xs text-text-dim">≈ {grams} גרם</span>
             )}
           </div>
           <div className="text-sm text-text-dim">
