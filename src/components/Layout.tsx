@@ -11,12 +11,9 @@ const NAV_ITEMS = [
 
 export default function Layout() {
   return (
-    <div
-      className="mx-auto flex min-h-svh max-w-3xl flex-col"
-      style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
-    >
+    <div className="mx-auto flex h-dvh max-w-3xl flex-col overflow-hidden">
       <header
-        className="flex items-center gap-2 border-b border-border px-4 pb-3"
+        className="flex shrink-0 items-center gap-2 border-b border-border px-4 pb-3"
         style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top, 0px))' }}
       >
         <LogoMark size={32} />
@@ -31,12 +28,12 @@ export default function Layout() {
         </button>
       </header>
 
-      <main className="flex-1 px-4 py-4">
+      <main className="flex-1 overflow-y-auto px-4 py-4">
         <Outlet />
       </main>
 
       <nav
-        className="fixed inset-x-0 bottom-0 mx-auto flex max-w-3xl border-t border-border bg-surface"
+        className="flex shrink-0 border-t border-border bg-surface"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         {NAV_ITEMS.map(({ to, label, Icon, end }) => (
