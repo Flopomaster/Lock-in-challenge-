@@ -11,7 +11,10 @@ const NAV_ITEMS = [
 
 export default function Layout() {
   return (
-    <div className="mx-auto flex h-dvh max-w-3xl flex-col overflow-hidden">
+    <div
+      className="mx-auto flex max-w-3xl flex-col overflow-hidden"
+      style={{ height: 'var(--app-vh)' }}
+    >
       <header
         className="flex shrink-0 items-center gap-2 border-b border-border px-4 pb-3"
         style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top, 0px))' }}

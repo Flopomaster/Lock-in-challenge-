@@ -31,6 +31,8 @@
 :root {
   color-scheme: dark;
   --gradient-brand: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  /* Overwritten in JS (index.html) with the real measured viewport height. */
+  --app-vh: 100dvh;
 }
 
 html {

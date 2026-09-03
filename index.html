@@ -15,6 +15,23 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Lock In" />
     <title>Lock In</title>
+    <script>
+      // Real, measured viewport height instead of trusting CSS dvh/svh support,
+      // which is inconsistent across mobile browsers/webviews and can leave
+      // the bottom nav sitting above a gap of empty space on short pages.
+      (function () {
+        function setAppHeight() {
+          var h = (window.visualViewport && window.visualViewport.height) || window.innerHeight
+          document.documentElement.style.setProperty('--app-vh', h + 'px')
+        }
+        setAppHeight()
+        window.addEventListener('resize', setAppHeight)
+        window.addEventListener('orientationchange', setAppHeight)
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', setAppHeight)
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
