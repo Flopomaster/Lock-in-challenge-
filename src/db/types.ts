@@ -18,15 +18,26 @@ export interface WorkoutSession {
   createdAt: number
 }
 
-export interface Meal {
-  id?: number
-  date: string // YYYY-MM-DD
-  time?: string
+export interface MealItem {
   name: string
   calories: number
   protein?: number
   carbs?: number
   fat?: number
+}
+
+export interface Meal {
+  id?: number
+  date: string // YYYY-MM-DD
+  time?: string
+  name: string
+  /** Sum of all items' calories (or the single value, for a simple meal with no items breakdown). */
+  calories: number
+  protein?: number
+  carbs?: number
+  fat?: number
+  /** Individual foods that make up this meal, when logged via the multi-item flow. */
+  items?: MealItem[]
   createdAt: number
 }
 

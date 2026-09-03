@@ -2,17 +2,13 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import BodyStatsCard from '../components/BodyStatsCard'
 import { Card, SectionHeader } from '../components/Card'
-import { IconEdit, IconTrash } from '../components/icons'
+import { IconEdit, IconPlus, IconTrash } from '../components/icons'
 import { mealsRepo } from '../db/repository'
-import type { Meal } from '../db/types'
+import type { Meal, MealItem } from '../db/types'
 import { computeFromGrams, searchFoods, type FoodItem } from '../data/foods'
 import { formatHebrewDate, todayStr } from '../lib/dates'
 
-function FoodPicker({
-  onApply,
-}: {
-  onApply: (values: { name: string; calories: number; protein: number; carbs: number; fat: number }) => void
-}) {
+function FoodPicker({ onAdd }: { onAdd: (item: MealItem) => void }) {
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<FoodItem | null>(null)
   const [mode, setMode] = useState<'grams' | 'units'>('grams')
@@ -44,9 +40,9 @@ function FoodPicker({
     setQuantity('100')
   }
 
-  function apply() {
+  function add() {
     if (!selected || !computed) return
-    onApply({ name: selected.name, ...computed })
+    onAdd({ name: selected.name, ...computed })
     clear()
   }
 
@@ -124,10 +120,10 @@ function FoodPicker({
           </div>
           <button
             type="button"
-            onClick={apply}
+            onClick={add}
             className="rounded-lg bg-primary py-1.5 text-sm font-semibold text-primary-ink"
           >
-            השתמש בערכים אלו
+            הוסף לארוחה
           </button>
         </div>
       )}
@@ -135,19 +131,103 @@ function FoodPicker({
   )
 }
 
-export default function Nutrition() {
-  const [date, setDate] = useState(todayStr())
+function ManualItemForm({ onAdd }: { onAdd: (item: MealItem) => void }) {
   const [name, setName] = useState('')
   const [calories, setCalories] = useState('')
   const [protein, setProtein] = useState('')
   const [carbs, setCarbs] = useState('')
   const [fat, setFat] = useState('')
+
+  function add() {
+    if (!name.trim() || !calories) return
+    onAdd({
+      name: name.trim(),
+      calories: Number(calories),
+      protein: protein ? Number(protein) : undefined,
+      carbs: carbs ? Number(carbs) : undefined,
+      fat: fat ? Number(fat) : undefined,
+    })
+    setName('')
+    setCalories('')
+    setProtein('')
+    setCarbs('')
+    setFat('')
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="text-xs font-semibold text-text-dim">או הוספה ידנית</div>
+      <input
+        type="text"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="שם הפריט"
+        className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
+      />
+      <div className="grid grid-cols-4 gap-2">
+        <input
+          type="number"
+          value={calories}
+          onChange={(e) => setCalories(e.target.value)}
+          placeholder='קק"ל'
+          className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
+        />
+        <input
+          type="number"
+          value={protein}
+          onChange={(e) => setProtein(e.target.value)}
+          placeholder="חלבון"
+          className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
+        />
+        <input
+          type="number"
+          value={carbs}
+          onChange={(e) => setCarbs(e.target.value)}
+          placeholder="פחמימה"
+          className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
+        />
+        <input
+          type="number"
+          value={fat}
+          onChange={(e) => setFat(e.target.value)}
+          placeholder="שומן"
+          className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
+        />
+      </div>
+      <button
+        type="button"
+        onClick={add}
+        className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-1.5 text-sm text-text-dim"
+      >
+        <IconPlus size={14} />
+        הוסף פריט
+      </button>
+    </div>
+  )
+}
+
+function itemTotals(items: MealItem[]) {
+  return items.reduce(
+    (acc, i) => ({
+      calories: acc.calories + i.calories,
+      protein: acc.protein + (i.protein ?? 0),
+      carbs: acc.carbs + (i.carbs ?? 0),
+      fat: acc.fat + (i.fat ?? 0),
+    }),
+    { calories: 0, protein: 0, carbs: 0, fat: 0 },
+  )
+}
+
+export default function Nutrition() {
+  const [date, setDate] = useState(todayStr())
+  const [mealName, setMealName] = useState('')
+  const [items, setItems] = useState<MealItem[]>([])
   const [editingId, setEditingId] = useState<number | null>(null)
 
   const viewDate = date
   const meals = useLiveQuery(() => mealsRepo.byDate(viewDate), [viewDate], [])
 
-  const totals = (meals ?? []).reduce(
+  const dayTotals = (meals ?? []).reduce(
     (acc, m) => ({
       calories: acc.calories + m.calories,
       protein: acc.protein + (m.protein ?? 0),
@@ -157,33 +237,43 @@ export default function Nutrition() {
     { calories: 0, protein: 0, carbs: 0, fat: 0 },
   )
 
+  const pendingTotals = itemTotals(items)
+
   function resetForm() {
-    setName('')
-    setCalories('')
-    setProtein('')
-    setCarbs('')
-    setFat('')
+    setMealName('')
+    setItems([])
     setEditingId(null)
   }
 
   function startEdit(meal: Meal) {
     setEditingId(meal.id!)
-    setName(meal.name)
-    setCalories(String(meal.calories))
-    setProtein(meal.protein !== undefined ? String(meal.protein) : '')
-    setCarbs(meal.carbs !== undefined ? String(meal.carbs) : '')
-    setFat(meal.fat !== undefined ? String(meal.fat) : '')
+    setMealName(meal.name)
+    setItems(
+      meal.items && meal.items.length > 0
+        ? meal.items
+        : [{ name: meal.name, calories: meal.calories, protein: meal.protein, carbs: meal.carbs, fat: meal.fat }],
+    )
   }
 
-  async function handleSubmit() {
-    if (!name.trim() || !calories) return
+  function addItem(item: MealItem) {
+    setItems((prev) => [...prev, item])
+  }
+
+  function removeItem(index: number) {
+    setItems((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  async function handleSaveMeal() {
+    if (items.length === 0) return
+    const totals = itemTotals(items)
     const values = {
       date,
-      name: name.trim(),
-      calories: Number(calories),
-      protein: protein ? Number(protein) : undefined,
-      carbs: carbs ? Number(carbs) : undefined,
-      fat: fat ? Number(fat) : undefined,
+      name: mealName.trim() || items.map((i) => i.name).join(' + '),
+      calories: totals.calories,
+      protein: totals.protein || undefined,
+      carbs: totals.carbs || undefined,
+      fat: totals.fat || undefined,
+      items,
     }
     if (editingId) {
       await mealsRepo.update(editingId, values)
@@ -211,93 +301,81 @@ export default function Nutrition() {
         <SectionHeader title={`סה"כ ל-${formatHebrewDate(date)}`} />
         <div className="grid grid-cols-4 gap-2 text-center text-sm">
           <div>
-            <div className="text-lg font-bold">{totals.calories}</div>
+            <div className="text-lg font-bold">{dayTotals.calories}</div>
             <div className="text-xs text-text-dim">קק"ל</div>
           </div>
           <div>
-            <div className="text-lg font-bold">{totals.protein}</div>
+            <div className="text-lg font-bold">{dayTotals.protein}</div>
             <div className="text-xs text-text-dim">חלבון</div>
           </div>
           <div>
-            <div className="text-lg font-bold">{totals.carbs}</div>
+            <div className="text-lg font-bold">{dayTotals.carbs}</div>
             <div className="text-xs text-text-dim">פחמימה</div>
           </div>
           <div>
-            <div className="text-lg font-bold">{totals.fat}</div>
+            <div className="text-lg font-bold">{dayTotals.fat}</div>
             <div className="text-xs text-text-dim">שומן</div>
           </div>
         </div>
       </Card>
 
       <Card>
-        <SectionHeader title={editingId ? 'עריכת ארוחה' : 'הוספת ארוחה'} />
+        <SectionHeader title={editingId ? 'עריכת ארוחה' : 'בניית ארוחה'} />
         <div className="flex flex-col gap-3">
-          <FoodPicker
-            onApply={(v) => {
-              setName(v.name)
-              setCalories(String(v.calories))
-              setProtein(String(v.protein))
-              setCarbs(String(v.carbs))
-              setFat(String(v.fat))
-            }}
+          <FoodPicker onAdd={addItem} />
+          <ManualItemForm onAdd={addItem} />
+
+          {items.length > 0 && (
+            <div className="flex flex-col gap-2 rounded-xl border border-border p-3">
+              <div className="text-xs font-semibold text-text-dim">פריטים בארוחה</div>
+              {items.map((it, i) => (
+                <div key={i} className="flex items-center justify-between text-sm">
+                  <span>{it.name}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-text-dim">{it.calories} קק"ל</span>
+                    <button
+                      type="button"
+                      onClick={() => removeItem(i)}
+                      className="text-text-dim hover:text-danger"
+                    >
+                      <IconTrash size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <div className="border-t border-border pt-2 text-sm font-medium">
+                סה"כ: {pendingTotals.calories} קק"ל · חלבון {pendingTotals.protein} · פחמימה{' '}
+                {pendingTotals.carbs} · שומן {pendingTotals.fat}
+              </div>
+            </div>
+          )}
+
+          <input
+            type="text"
+            value={mealName}
+            onChange={(e) => setMealName(e.target.value)}
+            placeholder="שם הארוחה (אופציונלי, למשל: ארוחת בוקר)"
+            className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
           />
 
-          <div className="flex flex-col gap-2">
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="שם הארוחה (או ערוך ידנית)"
-              className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
-            />
-            <div className="grid grid-cols-4 gap-2">
-              <input
-                type="number"
-                value={calories}
-                onChange={(e) => setCalories(e.target.value)}
-                placeholder='קק"ל'
-                className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
-              />
-              <input
-                type="number"
-                value={protein}
-                onChange={(e) => setProtein(e.target.value)}
-                placeholder="חלבון"
-                className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
-              />
-              <input
-                type="number"
-                value={carbs}
-                onChange={(e) => setCarbs(e.target.value)}
-                placeholder="פחמימה"
-                className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
-              />
-              <input
-                type="number"
-                value={fat}
-                onChange={(e) => setFat(e.target.value)}
-                placeholder="שומן"
-                className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
-              />
-            </div>
-            <div className="flex gap-2">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleSaveMeal}
+              disabled={items.length === 0}
+              className="flex-1 rounded-lg bg-primary py-2 text-sm font-semibold text-primary-ink disabled:opacity-40"
+            >
+              {editingId ? 'עדכן ארוחה' : `סיימתי, שמור ארוחה${items.length > 0 ? ` (${items.length} פריטים)` : ''}`}
+            </button>
+            {(editingId || items.length > 0) && (
               <button
                 type="button"
-                onClick={handleSubmit}
-                className="flex-1 rounded-lg bg-primary py-2 text-sm font-semibold text-primary-ink"
+                onClick={resetForm}
+                className="rounded-lg border border-border px-4 py-2 text-sm text-text-dim"
               >
-                {editingId ? 'עדכן ארוחה' : 'הוסף ארוחה'}
+                ביטול
               </button>
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="rounded-lg border border-border px-4 py-2 text-sm text-text-dim"
-                >
-                  ביטול
-                </button>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </Card>
@@ -312,6 +390,9 @@ export default function Nutrition() {
             <Card key={m.id} className="flex items-center justify-between py-3">
               <div>
                 <div className="font-medium">{m.name}</div>
+                {m.items && m.items.length > 1 && (
+                  <div className="text-xs text-text-dim">{m.items.map((i) => i.name).join(' + ')}</div>
+                )}
                 <div className="text-xs text-text-dim">
                   {m.calories} קק"ל
                   {m.protein ? ` · חלבון ${m.protein}` : ''}
