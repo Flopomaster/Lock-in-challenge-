@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Card, SectionHeader } from '../components/Card'
+import { IconTrash } from '../components/icons'
 import { workoutsRepo } from '../db/repository'
 import type { WorkoutExercise } from '../db/types'
 import { formatHebrewDate, todayStr } from '../lib/dates'
@@ -67,7 +68,7 @@ export default function Workouts() {
         <button
           type="button"
           onClick={() => setShowForm(true)}
-          className="rounded-2xl border border-dashed border-border py-3 text-sm font-medium text-accent"
+          className="rounded-2xl border border-dashed border-border py-3 text-sm font-medium text-primary"
         >
           + רישום אימון חדש
         </button>
@@ -151,7 +152,7 @@ export default function Workouts() {
                     <button
                       type="button"
                       onClick={() => addSet(i)}
-                      className="mt-1 self-start text-xs text-accent"
+                      className="mt-1 self-start text-xs text-primary"
                     >
                       + סט
                     </button>
@@ -171,7 +172,7 @@ export default function Workouts() {
               <button
                 type="button"
                 onClick={handleSubmit}
-                className="flex-1 rounded-lg bg-accent py-2 text-sm font-semibold text-white"
+                className="flex-1 rounded-lg bg-primary py-2 text-sm font-semibold text-primary-ink"
               >
                 שמור אימון
               </button>
@@ -206,9 +207,9 @@ export default function Workouts() {
                 <button
                   type="button"
                   onClick={() => w.id && workoutsRepo.remove(w.id)}
-                  className="text-xs text-text-dim hover:text-accent"
+                  className="text-text-dim hover:text-danger"
                 >
-                  מחק
+                  <IconTrash size={16} />
                 </button>
               </div>
               {w.exercises.length > 0 && (

@@ -31,17 +31,30 @@ export interface Meal {
 }
 
 export type GoalCategory = 'workout' | 'nutrition' | 'weight' | 'custom'
+export type GoalKind = 'recurring' | 'once'
+export type GoalPeriod = 'daily' | 'weekly' | 'monthly'
 
 export interface Goal {
   id?: number
   title: string
   category: GoalCategory
+  kind: GoalKind
+  /** Required when kind === 'recurring'; the window progress resets on. */
+  period?: GoalPeriod
   targetValue: number
-  currentValue: number
   unit: string
-  deadline?: string // YYYY-MM-DD
+  deadline?: string // YYYY-MM-DD, only meaningful for kind === 'once'
   createdAt: number
   completedAt?: number
+}
+
+/** A logged contribution toward a goal (e.g. "+0.5L water"). Progress is the sum of entries in the active window. */
+export interface GoalEntry {
+  id?: number
+  goalId: number
+  amount: number
+  date: string // YYYY-MM-DD
+  createdAt: number
 }
 
 export interface Habit {
@@ -64,4 +77,9 @@ export interface BodyMetric {
   date: string // YYYY-MM-DD
   weightKg: number
   createdAt: number
+}
+
+export interface AppSetting {
+  key: string
+  value: number
 }

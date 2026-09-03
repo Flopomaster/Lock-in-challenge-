@@ -1,20 +1,20 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { IconBowl, IconDumbbell, IconFlame, IconHome, IconTarget, LogoMark } from './icons'
 
 const NAV_ITEMS = [
-  { to: '/', label: 'בית', icon: '🏠', end: true },
-  { to: '/workouts', label: 'אימונים', icon: '🏋️' },
-  { to: '/nutrition', label: 'תזונה', icon: '🍽️' },
-  { to: '/goals', label: 'יעדים', icon: '🎯' },
-  { to: '/habits', label: 'הרגלים', icon: '🔥' },
+  { to: '/', label: 'בית', Icon: IconHome, end: true },
+  { to: '/workouts', label: 'אימונים', Icon: IconDumbbell },
+  { to: '/nutrition', label: 'תזונה', Icon: IconBowl },
+  { to: '/goals', label: 'יעדים', Icon: IconTarget },
+  { to: '/habits', label: 'הרגלים', Icon: IconFlame },
 ]
 
 export default function Layout() {
   return (
     <div className="mx-auto flex min-h-svh max-w-3xl flex-col pb-20">
-      <header className="border-b border-border px-4 py-4">
-        <h1 className="text-xl font-bold tracking-tight text-text">
-          Lock In <span className="text-accent">🔒</span>
-        </h1>
+      <header className="flex items-center gap-2 border-b border-border px-4 py-3">
+        <LogoMark size={32} />
+        <h1 className="text-lg font-bold tracking-tight text-text">Lock In</h1>
       </header>
 
       <main className="flex-1 px-4 py-4">
@@ -22,19 +22,19 @@ export default function Layout() {
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 mx-auto flex max-w-3xl border-t border-border bg-surface">
-        {NAV_ITEMS.map((item) => (
+        {NAV_ITEMS.map(({ to, label, Icon, end }) => (
           <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
+            key={to}
+            to={to}
+            end={end}
             className={({ isActive }) =>
-              `flex flex-1 flex-col items-center gap-0.5 py-2.5 text-xs ${
-                isActive ? 'text-accent' : 'text-text-dim'
+              `flex flex-1 flex-col items-center gap-0.5 py-2.5 text-xs transition-colors ${
+                isActive ? 'text-primary' : 'text-text-dim'
               }`
             }
           >
-            <span className="text-lg leading-none">{item.icon}</span>
-            {item.label}
+            <Icon size={22} />
+            {label}
           </NavLink>
         ))}
       </nav>

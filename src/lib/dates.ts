@@ -24,6 +24,18 @@ export function formatHebrewDate(dateStr: string): string {
   return d.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' })
 }
 
+/** Start date (YYYY-MM-DD) of the current daily/weekly/monthly window, weeks starting Sunday. */
+export function periodStart(period: 'daily' | 'weekly' | 'monthly'): string {
+  const now = new Date()
+  if (period === 'daily') return todayStr()
+  if (period === 'weekly') {
+    const d = new Date(now)
+    d.setDate(d.getDate() - d.getDay())
+    return toDateStr(d)
+  }
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+}
+
 /** Longest current streak of consecutive days (ending today or yesterday) with a truthy entry in `doneDates`. */
 export function computeStreak(doneDates: Set<string>): number {
   let streak = 0

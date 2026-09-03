@@ -1,13 +1,24 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { BodyMetric, Goal, Habit, HabitLog, Meal, WorkoutSession } from './types'
+import type {
+  AppSetting,
+  BodyMetric,
+  Goal,
+  GoalEntry,
+  Habit,
+  HabitLog,
+  Meal,
+  WorkoutSession,
+} from './types'
 
 class LockInDatabase extends Dexie {
   workouts!: EntityTable<WorkoutSession, 'id'>
   meals!: EntityTable<Meal, 'id'>
   goals!: EntityTable<Goal, 'id'>
+  goalEntries!: EntityTable<GoalEntry, 'id'>
   habits!: EntityTable<Habit, 'id'>
   habitLogs!: EntityTable<HabitLog, 'id'>
   bodyMetrics!: EntityTable<BodyMetric, 'id'>
+  settings!: EntityTable<AppSetting, 'key'>
 
   constructor() {
     super('lock-in-challenge')
@@ -18,6 +29,10 @@ class LockInDatabase extends Dexie {
       habits: '++id, createdAt, archivedAt',
       habitLogs: '++id, habitId, date, [habitId+date]',
       bodyMetrics: '++id, date, createdAt',
+    })
+    this.version(2).stores({
+      goalEntries: '++id, goalId, date, [goalId+date]',
+      settings: '&key',
     })
   }
 }

@@ -1,8 +1,109 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import BodyStatsCard from '../components/BodyStatsCard'
 import { Card, SectionHeader } from '../components/Card'
+import { IconTrash } from '../components/icons'
 import { mealsRepo } from '../db/repository'
+import { computeFromGrams, searchFoods, type FoodItem } from '../data/foods'
 import { formatHebrewDate, todayStr } from '../lib/dates'
+
+function FoodPicker({
+  onApply,
+}: {
+  onApply: (values: { name: string; calories: number; protein: number; carbs: number; fat: number }) => void
+}) {
+  const [query, setQuery] = useState('')
+  const [selected, setSelected] = useState<FoodItem | null>(null)
+  const [grams, setGrams] = useState('100')
+
+  const results = useMemo(() => (selected ? [] : searchFoods(query)), [query, selected])
+  const computed = selected ? computeFromGrams(selected, Number(grams) || 0) : null
+
+  function pick(food: FoodItem) {
+    setSelected(food)
+    setQuery(food.name)
+    setGrams(String(food.gramsPerUnit ?? 100))
+  }
+
+  function clear() {
+    setSelected(null)
+    setQuery('')
+    setGrams('100')
+  }
+
+  function apply() {
+    if (!selected || !computed) return
+    onApply({ name: selected.name, ...computed })
+    clear()
+  }
+
+  return (
+    <div className="rounded-xl border border-primary-border bg-primary-bg p-3">
+      <div className="mb-2 text-xs font-semibold text-primary">חיפוש במאגר המזונות</div>
+      <div className="relative">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            setSelected(null)
+          }}
+          placeholder="חפש מזון... (למשל: עוף, אורז, ביצה)"
+          className="w-full rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
+        />
+        {results.length > 0 && (
+          <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-border bg-surface-hi shadow-lg">
+            {results.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => pick(f)}
+                className="flex w-full items-center justify-between px-3 py-2 text-right text-sm hover:bg-surface"
+              >
+                <span>{f.name}</span>
+                <span className="text-xs text-text-dim">{f.calories} קק"ל/100ג</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {selected && computed && (
+        <div className="mt-3 flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={grams}
+              onChange={(e) => setGrams(e.target.value)}
+              className="w-24 rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
+            />
+            <span className="text-sm text-text-dim">גרם</span>
+            {selected.gramsPerUnit && (
+              <button
+                type="button"
+                onClick={() => setGrams(String(selected.gramsPerUnit))}
+                className="text-xs text-secondary"
+              >
+                {selected.unitLabel} ({selected.gramsPerUnit}ג׳)
+              </button>
+            )}
+          </div>
+          <div className="text-sm text-text-dim">
+            {computed.calories} קק"ל · חלבון {computed.protein} · פחמימה {computed.carbs} · שומן{' '}
+            {computed.fat}
+          </div>
+          <button
+            type="button"
+            onClick={apply}
+            className="rounded-lg bg-primary py-1.5 text-sm font-semibold text-primary-ink"
+          >
+            השתמש בערכים אלו
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function Nutrition() {
   const [date, setDate] = useState(todayStr())
@@ -44,6 +145,8 @@ export default function Nutrition() {
 
   return (
     <div className="flex flex-col gap-4">
+      <BodyStatsCard />
+
       <label className="flex flex-col gap-1 text-xs text-text-dim">
         תאריך
         <input
@@ -78,51 +181,63 @@ export default function Nutrition() {
 
       <Card>
         <SectionHeader title="הוספת ארוחה" />
-        <div className="flex flex-col gap-2">
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="שם הארוחה"
-            className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
+        <div className="flex flex-col gap-3">
+          <FoodPicker
+            onApply={(v) => {
+              setName(v.name)
+              setCalories(String(v.calories))
+              setProtein(String(v.protein))
+              setCarbs(String(v.carbs))
+              setFat(String(v.fat))
+            }}
           />
-          <div className="grid grid-cols-4 gap-2">
+
+          <div className="flex flex-col gap-2">
             <input
-              type="number"
-              value={calories}
-              onChange={(e) => setCalories(e.target.value)}
-              placeholder='קק"ל'
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="שם הארוחה (או ערוך ידנית)"
               className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
             />
-            <input
-              type="number"
-              value={protein}
-              onChange={(e) => setProtein(e.target.value)}
-              placeholder="חלבון"
-              className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
-            />
-            <input
-              type="number"
-              value={carbs}
-              onChange={(e) => setCarbs(e.target.value)}
-              placeholder="פחמימה"
-              className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
-            />
-            <input
-              type="number"
-              value={fat}
-              onChange={(e) => setFat(e.target.value)}
-              placeholder="שומן"
-              className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
-            />
+            <div className="grid grid-cols-4 gap-2">
+              <input
+                type="number"
+                value={calories}
+                onChange={(e) => setCalories(e.target.value)}
+                placeholder='קק"ל'
+                className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
+              />
+              <input
+                type="number"
+                value={protein}
+                onChange={(e) => setProtein(e.target.value)}
+                placeholder="חלבון"
+                className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
+              />
+              <input
+                type="number"
+                value={carbs}
+                onChange={(e) => setCarbs(e.target.value)}
+                placeholder="פחמימה"
+                className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
+              />
+              <input
+                type="number"
+                value={fat}
+                onChange={(e) => setFat(e.target.value)}
+                placeholder="שומן"
+                className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="rounded-lg bg-primary py-2 text-sm font-semibold text-primary-ink"
+            >
+              הוסף ארוחה
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className="rounded-lg bg-accent py-2 text-sm font-semibold text-white"
-          >
-            הוסף ארוחה
-          </button>
         </div>
       </Card>
 
@@ -146,9 +261,9 @@ export default function Nutrition() {
               <button
                 type="button"
                 onClick={() => m.id && mealsRepo.remove(m.id)}
-                className="text-xs text-text-dim hover:text-accent"
+                className="text-text-dim hover:text-danger"
               >
-                מחק
+                <IconTrash size={16} />
               </button>
             </Card>
           ))}

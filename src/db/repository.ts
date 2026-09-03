@@ -3,6 +3,7 @@
 // a cloud API later without touching page code.
 import { db } from './db'
 import type { BodyMetric, Goal, Habit, Meal, WorkoutSession } from './types'
+import { periodStart, todayStr } from '../lib/dates'
 
 // --- Workouts ---
 export const workoutsRepo = {
@@ -30,9 +31,31 @@ export const mealsRepo = {
 export const goalsRepo = {
   add: (g: Omit<Goal, 'id' | 'createdAt'>) => db.goals.add({ ...g, createdAt: Date.now() }),
   update: (id: number, changes: Partial<Goal>) => db.goals.update(id, changes),
-  remove: (id: number) => db.goals.delete(id),
+  remove: async (id: number) => {
+    await db.goalEntries.where('goalId').equals(id).delete()
+    await db.goals.delete(id)
+  },
   all: () => db.goals.orderBy('createdAt').reverse().toArray(),
   active: () => db.goals.filter((g) => !g.completedAt).toArray(),
+}
+
+export const goalEntriesRepo = {
+  add: (goalId: number, amount: number, date: string = todayStr()) =>
+    db.goalEntries.add({ goalId, amount, date, createdAt: Date.now() }),
+  removeLast: async (goalId: number) => {
+    const last = await db.goalEntries.where('goalId').equals(goalId).last()
+    if (last?.id) await db.goalEntries.delete(last.id)
+  },
+  byGoal: (goalId: number) => db.goalEntries.where('goalId').equals(goalId).toArray(),
+  /** Sum of entries within the goal's active window: current day/week/month for recurring goals, all-time for one-off goals. */
+  progressFor: async (goal: Goal): Promise<number> => {
+    const entries = await db.goalEntries.where('goalId').equals(goal.id!).toArray()
+    if (goal.kind === 'once') {
+      return entries.reduce((sum, e) => sum + e.amount, 0)
+    }
+    const from = periodStart(goal.period!)
+    return entries.filter((e) => e.date >= from).reduce((sum, e) => sum + e.amount, 0)
+  },
 }
 
 // --- Habits ---
@@ -65,4 +88,11 @@ export const bodyMetricsRepo = {
     db.bodyMetrics.add({ ...b, createdAt: Date.now() }),
   remove: (id: number) => db.bodyMetrics.delete(id),
   all: () => db.bodyMetrics.orderBy('date').toArray(),
+  latest: async () => (await db.bodyMetrics.orderBy('date').last()) ?? null,
+}
+
+// --- App settings (simple key/value, e.g. target weight) ---
+export const settingsRepo = {
+  get: async (key: string) => (await db.settings.get(key))?.value,
+  set: (key: string, value: number) => db.settings.put({ key, value }),
 }
