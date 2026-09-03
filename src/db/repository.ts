@@ -2,7 +2,7 @@
 // so the storage backend (currently IndexedDB via Dexie) can be swapped for
 // a cloud API later without touching page code.
 import { db } from './db'
-import type { BodyMetric, Goal, Meal, WorkoutSession } from './types'
+import type { BodyMetric, Goal, GoalPeriod, Meal, WorkoutSession } from './types'
 import { periodStart, todayStr } from '../lib/dates'
 
 // --- Workouts ---
@@ -54,6 +54,12 @@ export const goalEntriesRepo = {
       return entries.reduce((sum, e) => sum + e.amount, 0)
     }
     const from = periodStart(goal.period!)
+    return entries.filter((e) => e.date >= from).reduce((sum, e) => sum + e.amount, 0)
+  },
+  /** Sum of entries within an explicit period window, ignoring the goal's own native period — used to browse a goal at a different granularity (e.g. a daily goal's weekly total). */
+  progressForWindow: async (goal: Goal, windowPeriod: GoalPeriod): Promise<number> => {
+    const entries = await db.goalEntries.where('goalId').equals(goal.id!).toArray()
+    const from = periodStart(windowPeriod)
     return entries.filter((e) => e.date >= from).reduce((sum, e) => sum + e.amount, 0)
   },
 }

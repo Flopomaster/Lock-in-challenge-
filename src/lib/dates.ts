@@ -36,6 +36,23 @@ export function periodStart(period: 'daily' | 'weekly' | 'monthly'): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
 }
 
+/** Approximate day-count of each period, used to rescale a goal's target across periods. */
+export const PERIOD_DAYS: Record<'daily' | 'weekly' | 'monthly', number> = {
+  daily: 1,
+  weekly: 7,
+  monthly: 30,
+}
+
+/** Converts a target set for `fromPeriod` into the equivalent target for `toPeriod` (e.g. 4L/day -> 28L/week). */
+export function scaleTarget(
+  target: number,
+  fromPeriod: 'daily' | 'weekly' | 'monthly',
+  toPeriod: 'daily' | 'weekly' | 'monthly',
+): number {
+  const scaled = target * (PERIOD_DAYS[toPeriod] / PERIOD_DAYS[fromPeriod])
+  return Math.round(scaled * 100) / 100
+}
+
 /** Longest current streak of consecutive days (ending today or yesterday) with a truthy entry in `doneDates`. */
 export function computeStreak(doneDates: Set<string>): number {
   let streak = 0

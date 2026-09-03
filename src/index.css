@@ -166,3 +166,53 @@ textarea {
 .splash-screen {
   animation: splash-out 0.5s ease-in 1.5s forwards;
 }
+
+@keyframes confetti-burst {
+  from {
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateX(var(--dist));
+    opacity: 0;
+  }
+}
+
+.confetti-particle {
+  animation: confetti-burst 650ms cubic-bezier(0.2, 0.75, 0.3, 1) both;
+}
+
+@keyframes card-pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--color-primary-bg);
+  }
+  40% {
+    box-shadow: 0 0 0 8px var(--color-primary-bg);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.celebrate-pulse {
+  animation: card-pulse 650ms ease-out;
+}
+
+@keyframes celebration-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) translateY(12px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.05) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.celebration-pop-in {
+  animation: celebration-pop-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}

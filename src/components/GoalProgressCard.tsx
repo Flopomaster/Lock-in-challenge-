@@ -1,9 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { goalEntriesRepo, goalsRepo } from '../db/repository'
 import type { Goal, GoalPeriod } from '../db/types'
-import { formatHebrewDate } from '../lib/dates'
+import { formatHebrewDate, scaleTarget } from '../lib/dates'
 import { Card, ProgressBar } from './Card'
+import { ConfettiBurst, vibrate } from './ConfettiBurst'
 import { IconCheck, IconPlus, IconTrash } from './icons'
 
 const CATEGORY_LABELS: Record<Goal['category'], string> = {
@@ -22,15 +23,50 @@ const PERIOD_LABELS: Record<GoalPeriod, string> = {
 export function GoalProgressCard({
   goal,
   onDelete,
+  viewPeriod,
 }: {
   goal: Goal
   /** Omit to hide the delete button (e.g. a read+log summary view, not the management page). */
   onDelete?: (id: number) => void
+  /** Browse this recurring goal at a different granularity than its native period (e.g. show a daily goal's weekly total). */
+  viewPeriod?: GoalPeriod
 }) {
   const [amount, setAmount] = useState('')
-  const progress = useLiveQuery(() => goalEntriesRepo.progressFor(goal), [goal], 0) ?? 0
-  const pct = (progress / goal.targetValue) * 100
-  const reached = progress >= goal.targetValue
+  const isScaled = !!viewPeriod && goal.kind === 'recurring' && viewPeriod !== goal.period
+
+  const progress =
+    useLiveQuery(
+      async () => {
+        if (viewPeriod && goal.kind === 'recurring') {
+          return goalEntriesRepo.progressForWindow(goal, viewPeriod)
+        }
+        return goalEntriesRepo.progressFor(goal)
+      },
+      [goal, viewPeriod],
+      0,
+    ) ?? 0
+
+  const effectiveTarget =
+    isScaled && goal.period ? scaleTarget(goal.targetValue, goal.period, viewPeriod!) : goal.targetValue
+
+  const pct = (progress / effectiveTarget) * 100
+  const reached = progress >= effectiveTarget
+
+  const [burstKey, setBurstKey] = useState(0)
+  const [pulsing, setPulsing] = useState(false)
+  const prevReachedRef = useRef(reached)
+
+  useEffect(() => {
+    if (reached && !prevReachedRef.current) {
+      setBurstKey((k) => k + 1)
+      setPulsing(true)
+      vibrate(45)
+      const t = setTimeout(() => setPulsing(false), 700)
+      prevReachedRef.current = reached
+      return () => clearTimeout(t)
+    }
+    prevReachedRef.current = reached
+  }, [reached])
 
   async function addAmount() {
     const value = Number(amount) || 1
@@ -42,7 +78,8 @@ export function GoalProgressCard({
   }
 
   return (
-    <Card>
+    <Card className={`relative ${pulsing ? 'celebrate-pulse' : ''}`}>
+      <ConfettiBurst burstKey={burstKey} />
       <div className="mb-1 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-1.5 font-medium">
@@ -56,6 +93,7 @@ export function GoalProgressCard({
               : goal.deadline
                 ? ` · עד ${formatHebrewDate(goal.deadline)}`
                 : ' · חד פעמי'}
+            {isScaled && ` · מוצג כ${PERIOD_LABELS[viewPeriod!]}`}
           </div>
         </div>
         {onDelete && (
@@ -72,7 +110,7 @@ export function GoalProgressCard({
       <div className="mt-2 flex items-center justify-between text-sm">
         <span className="text-text-dim">
           <span dir="ltr" className="inline-block">
-            {progress} / {goal.targetValue}
+            {progress} / {effectiveTarget}
           </span>{' '}
           {goal.unit}
         </span>

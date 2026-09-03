@@ -1,34 +1,32 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Card, SectionHeader } from '../components/Card'
+import { DailyCompleteCelebration } from '../components/DailyCompleteCelebration'
 import { GoalProgressCard } from '../components/GoalProgressCard'
 import { IconFlame } from '../components/icons'
-import { goalEntriesRepo, goalsRepo, mealsRepo, workoutsRepo } from '../db/repository'
-import type { Goal } from '../db/types'
+import { vibrate } from '../components/ConfettiBurst'
+import { goalEntriesRepo, goalsRepo } from '../db/repository'
+import type { GoalPeriod } from '../db/types'
 import { quoteForDate } from '../data/quotes'
-import { computeStreak, daysAgoRange, todayStr } from '../lib/dates'
+import { computeStreak, todayStr } from '../lib/dates'
 
-function GoalGroup({ title, goals }: { title: string; goals: Goal[] }) {
-  if (goals.length === 0) return null
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="text-xs font-semibold text-text-dim uppercase tracking-wide">{title}</div>
-      {goals.map((g) => (
-        <GoalProgressCard key={g.id} goal={g} />
-      ))}
-    </div>
-  )
-}
+const PERIOD_TABS: { value: GoalPeriod; label: string }[] = [
+  { value: 'daily', label: 'יומי' },
+  { value: 'weekly', label: 'שבועי' },
+  { value: 'monthly', label: 'חודשי' },
+]
 
 export default function Dashboard() {
   const today = todayStr()
   const quote = quoteForDate(today)
+  const [viewPeriod, setViewPeriod] = useState<GoalPeriod>('daily')
 
   const goals = useLiveQuery(() => goalsRepo.active(), [], [])
   const daily = (goals ?? []).filter((g) => g.kind === 'recurring' && g.period === 'daily')
-  const weekly = (goals ?? []).filter((g) => g.kind === 'recurring' && g.period === 'weekly')
-  const monthly = (goals ?? []).filter((g) => g.kind === 'recurring' && g.period === 'monthly')
+  const recurring = (goals ?? []).filter((g) => g.kind === 'recurring')
   const once = (goals ?? []).filter((g) => g.kind === 'once')
+  const hasAnyGoals = recurring.length + once.length > 0
 
   // Lock-In streak: consecutive days where every daily recurring goal reached its target.
   const lockInStreak = useLiveQuery(async () => {
@@ -53,59 +51,39 @@ export default function Dashboard() {
     return computeStreak(fullyDoneDates)
   }, [], undefined)
 
-  const todaysMeals = useLiveQuery(() => mealsRepo.byDate(today), [today], [])
-  const todaysCalories = (todaysMeals ?? []).reduce((sum, m) => sum + m.calories, 0)
-
-  const weekWorkouts = useLiveQuery(async () => {
-    const { from, to } = daysAgoRange(7)
-    return workoutsRepo.byDateRange(from, to)
-  }, [], [])
-
   const dailyDoneToday = useLiveQuery(async () => {
     if (daily.length === 0) return 0
     const progresses = await Promise.all(daily.map((g) => goalEntriesRepo.progressFor(g)))
     return progresses.filter((p, i) => p >= daily[i].targetValue).length
   }, [daily], 0)
 
-  const hasAnyGoals = daily.length + weekly.length + monthly.length + once.length > 0
+  const allDailyDone = daily.length > 0 && dailyDoneToday === daily.length
+  const [showBigCelebration, setShowBigCelebration] = useState(false)
+  const prevAllDoneRef = useRef(allDailyDone)
+
+  useEffect(() => {
+    if (allDailyDone && !prevAllDoneRef.current) {
+      setShowBigCelebration(true)
+      vibrate([50, 60, 50, 60, 150])
+    }
+    prevAllDoneRef.current = allDailyDone
+  }, [allDailyDone])
 
   return (
     <div className="flex flex-col gap-4">
+      <DailyCompleteCelebration show={showBigCelebration} onDismiss={() => setShowBigCelebration(false)} />
+
       <Card className="border-secondary-border bg-gradient-to-br from-surface to-surface-hi">
         <p className="text-lg font-medium text-text">{quote.text}</p>
         <p className="mt-2 text-xs text-text-dim">— {quote.author}</p>
       </Card>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Card className="flex flex-col items-center text-center">
-          <div className="flex items-center gap-1.5 text-3xl font-bold text-primary">
-            {lockInStreak === undefined ? '…' : lockInStreak === null ? '–' : lockInStreak}
-            {typeof lockInStreak === 'number' && lockInStreak > 0 && <IconFlame size={24} />}
-          </div>
-          <div className="mt-1 text-xs text-text-dim">רצף לוק-אין (ימים)</div>
-        </Card>
-        <Card className="text-center">
-          <div className="text-3xl font-bold text-text">{(weekWorkouts ?? []).length}</div>
-          <div className="mt-1 text-xs text-text-dim">אימונים השבוע</div>
-        </Card>
-      </div>
-
-      <Card>
-        <SectionHeader title="היום" />
-        <div className="flex flex-col gap-2 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-text-dim">קלוריות</span>
-            <span className="font-medium">{todaysCalories} קק"ל</span>
-          </div>
-          {daily.length > 0 && (
-            <div className="flex items-center justify-between">
-              <span className="text-text-dim">יעדים יומיים הושלמו</span>
-              <span dir="ltr" className="inline-block font-medium">
-                {dailyDoneToday} / {daily.length}
-              </span>
-            </div>
-          )}
+      <Card className="flex flex-col items-center text-center">
+        <div className="flex items-center gap-1.5 text-3xl font-bold text-primary">
+          {lockInStreak === undefined ? '…' : lockInStreak === null ? '–' : lockInStreak}
+          {typeof lockInStreak === 'number' && lockInStreak > 0 && <IconFlame size={24} />}
         </div>
+        <div className="mt-1 text-xs text-text-dim">רצף לוק-אין (ימים)</div>
       </Card>
 
       <Card>
@@ -126,29 +104,41 @@ export default function Dashboard() {
             כדי לראות כאן את המשימות שלך.
           </p>
         ) : (
-          <div className="flex flex-col gap-4">
-            <GoalGroup title="היום" goals={daily} />
-            <GoalGroup title="השבוע" goals={weekly} />
-            <GoalGroup title="החודש" goals={monthly} />
-            <GoalGroup title="חד פעמי" goals={once} />
+          <div className="flex flex-col gap-3">
+            {recurring.length > 0 && (
+              <div className="flex gap-2 rounded-lg bg-surface-hi p-1">
+                {PERIOD_TABS.map((tab) => (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    onClick={() => setViewPeriod(tab.value)}
+                    className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${
+                      viewPeriod === tab.value ? 'bg-primary text-primary-ink' : 'text-text-dim'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex flex-col gap-2">
+              {recurring.map((g) => (
+                <GoalProgressCard key={g.id} goal={g} viewPeriod={viewPeriod} />
+              ))}
+            </div>
+            {once.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <div className="text-xs font-semibold text-text-dim uppercase tracking-wide">
+                  חד פעמי
+                </div>
+                {once.map((g) => (
+                  <GoalProgressCard key={g.id} goal={g} />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </Card>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Link
-          to="/workouts"
-          className="rounded-2xl border border-border bg-surface p-4 text-center text-sm font-medium hover:border-primary-border"
-        >
-          + רישום אימון
-        </Link>
-        <Link
-          to="/nutrition"
-          className="rounded-2xl border border-border bg-surface p-4 text-center text-sm font-medium hover:border-primary-border"
-        >
-          + רישום ארוחה
-        </Link>
-      </div>
     </div>
   )
 }

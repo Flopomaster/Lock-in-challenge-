@@ -10,8 +10,14 @@ const NAV_ITEMS = [
 
 export default function Layout() {
   return (
-    <div className="mx-auto flex min-h-svh max-w-3xl flex-col pb-20">
-      <header className="flex items-center gap-2 border-b border-border px-4 py-3">
+    <div
+      className="mx-auto flex min-h-svh max-w-3xl flex-col"
+      style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
+    >
+      <header
+        className="flex items-center gap-2 border-b border-border px-4 pb-3"
+        style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top, 0px))' }}
+      >
         <LogoMark size={32} />
         <h1 className="text-lg font-bold tracking-tight text-text">Lock In</h1>
       </header>
@@ -20,7 +26,10 @@ export default function Layout() {
         <Outlet />
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 mx-auto flex max-w-3xl border-t border-border bg-surface">
+      <nav
+        className="fixed inset-x-0 bottom-0 mx-auto flex max-w-3xl border-t border-border bg-surface"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
         {NAV_ITEMS.map(({ to, label, Icon, end }) => (
           <NavLink
             key={to}
