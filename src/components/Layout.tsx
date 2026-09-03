@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { IconBowl, IconDumbbell, IconHome, IconTarget, LogoMark } from './icons'
+import { logout } from '../lib/session'
+import { IconBowl, IconDumbbell, IconHome, IconLogout, IconTarget, LogoMark } from './icons'
 
 const NAV_ITEMS = [
   { to: '/', label: 'בית', Icon: IconHome, end: true },
@@ -19,7 +20,15 @@ export default function Layout() {
         style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top, 0px))' }}
       >
         <LogoMark size={32} />
-        <h1 className="text-lg font-bold tracking-tight text-text">Lock In</h1>
+        <h1 className="flex-1 text-lg font-bold tracking-tight text-text">Lock In</h1>
+        <button
+          type="button"
+          onClick={logout}
+          className="text-text-dim hover:text-danger"
+          aria-label="יציאה"
+        >
+          <IconLogout size={20} />
+        </button>
       </header>
 
       <main className="flex-1 px-4 py-4">

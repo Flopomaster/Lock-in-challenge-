@@ -4,6 +4,7 @@
 import { db } from './db'
 import type { BodyMetric, Goal, GoalPeriod, Meal, WorkoutSession } from './types'
 import { periodStart, todayStr } from '../lib/dates'
+import { hashPassword, verifyPassword } from '../lib/password'
 
 // --- Workouts ---
 export const workoutsRepo = {
@@ -77,4 +78,21 @@ export const bodyMetricsRepo = {
 export const settingsRepo = {
   get: async (key: string) => (await db.settings.get(key))?.value,
   set: (key: string, value: number) => db.settings.put({ key, value }),
+}
+
+// --- Local device lock (not a real account system, see lib/password.ts) ---
+export const authRepo = {
+  exists: async () => (await db.auth.get('local')) !== undefined,
+  getUsername: async () => (await db.auth.get('local'))?.username,
+  setCredentials: async (username: string, password: string) => {
+    const { hash, salt } = await hashPassword(password)
+    await db.auth.put({ id: 'local', username, passwordHash: hash, salt, createdAt: Date.now() })
+  },
+  verify: async (username: string, password: string): Promise<boolean> => {
+    const record = await db.auth.get('local')
+    if (!record || record.username !== username) return false
+    return verifyPassword(password, record.salt, record.passwordHash)
+  },
+  /** Clears only the lock credentials — never touches app data (workouts, meals, goals, ...). */
+  clear: () => db.auth.delete('local'),
 }

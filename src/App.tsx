@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
+import AuthGate from './components/AuthGate'
 import Layout from './components/Layout'
 import Splash from './components/Splash'
 import Dashboard from './pages/Dashboard'
@@ -13,14 +14,16 @@ export default function App() {
   return (
     <>
       {showSplash && <Splash onDone={() => setShowSplash(false)} />}
-      <Routes>
-        <Route element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="workouts" element={<Workouts />} />
-          <Route path="nutrition" element={<Nutrition />} />
-          <Route path="goals" element={<Goals />} />
-        </Route>
-      </Routes>
+      <AuthGate>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="workouts" element={<Workouts />} />
+            <Route path="nutrition" element={<Nutrition />} />
+            <Route path="goals" element={<Goals />} />
+          </Route>
+        </Routes>
+      </AuthGate>
     </>
   )
 }

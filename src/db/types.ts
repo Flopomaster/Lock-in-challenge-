@@ -79,3 +79,12 @@ export interface AppSetting {
   key: string
   value: number
 }
+
+/** Single-row local device lock — not a real account, just gates access to this browser's data. */
+export interface AuthRecord {
+  id: 'local'
+  username: string
+  passwordHash: string
+  salt: string
+  createdAt: number
+}
