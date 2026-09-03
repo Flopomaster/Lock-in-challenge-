@@ -1,12 +1,11 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { IconBowl, IconDumbbell, IconFlame, IconHome, IconTarget, LogoMark } from './icons'
+import { IconBowl, IconDumbbell, IconHome, IconTarget, LogoMark } from './icons'
 
 const NAV_ITEMS = [
   { to: '/', label: 'בית', Icon: IconHome, end: true },
   { to: '/workouts', label: 'אימונים', Icon: IconDumbbell },
   { to: '/nutrition', label: 'תזונה', Icon: IconBowl },
   { to: '/goals', label: 'יעדים', Icon: IconTarget },
-  { to: '/habits', label: 'הרגלים', Icon: IconFlame },
 ]
 
 export default function Layout() {

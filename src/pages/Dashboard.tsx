@@ -1,30 +1,21 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
-import { Card, ProgressBar, SectionHeader } from '../components/Card'
+import { Card, SectionHeader } from '../components/Card'
+import { GoalProgressCard } from '../components/GoalProgressCard'
 import { IconFlame } from '../components/icons'
-import {
-  goalEntriesRepo,
-  goalsRepo,
-  habitLogsRepo,
-  habitsRepo,
-  mealsRepo,
-  workoutsRepo,
-} from '../db/repository'
+import { goalEntriesRepo, goalsRepo, mealsRepo, workoutsRepo } from '../db/repository'
 import type { Goal } from '../db/types'
 import { quoteForDate } from '../data/quotes'
 import { computeStreak, daysAgoRange, todayStr } from '../lib/dates'
 
-function GoalMiniRow({ goal }: { goal: Goal }) {
-  const progress = useLiveQuery(() => goalEntriesRepo.progressFor(goal), [goal], 0) ?? 0
+function GoalGroup({ title, goals }: { title: string; goals: Goal[] }) {
+  if (goals.length === 0) return null
   return (
-    <div>
-      <div className="mb-1 flex items-center justify-between text-sm">
-        <span>{goal.title}</span>
-        <span className="text-text-dim">
-          {progress}/{goal.targetValue} {goal.unit}
-        </span>
-      </div>
-      <ProgressBar value={(progress / goal.targetValue) * 100} />
+    <div className="flex flex-col gap-2">
+      <div className="text-xs font-semibold text-text-dim uppercase tracking-wide">{title}</div>
+      {goals.map((g) => (
+        <GoalProgressCard key={g.id} goal={g} />
+      ))}
     </div>
   )
 }
@@ -33,21 +24,30 @@ export default function Dashboard() {
   const today = todayStr()
   const quote = quoteForDate(today)
 
-  const habits = useLiveQuery(() => habitsRepo.active(), [], [])
-  const allLogs = useLiveQuery(() => habitLogsRepo.byDate(today), [today], [])
+  const goals = useLiveQuery(() => goalsRepo.active(), [], [])
+  const daily = (goals ?? []).filter((g) => g.kind === 'recurring' && g.period === 'daily')
+  const weekly = (goals ?? []).filter((g) => g.kind === 'recurring' && g.period === 'weekly')
+  const monthly = (goals ?? []).filter((g) => g.kind === 'recurring' && g.period === 'monthly')
+  const once = (goals ?? []).filter((g) => g.kind === 'once')
 
-  // Lock-In streak: consecutive days where every active habit was completed.
+  // Lock-In streak: consecutive days where every daily recurring goal reached its target.
   const lockInStreak = useLiveQuery(async () => {
-    const activeHabits = await habitsRepo.active()
-    if (activeHabits.length === 0) return null
-    const logsByHabit = await Promise.all(activeHabits.map((h) => habitLogsRepo.byHabit(h.id!)))
-    const dateCounts = new Map<string, number>()
-    logsByHabit.flat().forEach((log) => {
-      if (log.completed) dateCounts.set(log.date, (dateCounts.get(log.date) ?? 0) + 1)
+    const dailyGoals = (await goalsRepo.active()).filter(
+      (g) => g.kind === 'recurring' && g.period === 'daily',
+    )
+    if (dailyGoals.length === 0) return null
+    const entriesByGoal = await Promise.all(dailyGoals.map((g) => goalEntriesRepo.byGoal(g.id!)))
+    const sumsByDate = new Map<string, Map<number, number>>()
+    dailyGoals.forEach((g, idx) => {
+      entriesByGoal[idx].forEach((e) => {
+        if (!sumsByDate.has(e.date)) sumsByDate.set(e.date, new Map())
+        const m = sumsByDate.get(e.date)!
+        m.set(g.id!, (m.get(g.id!) ?? 0) + e.amount)
+      })
     })
     const fullyDoneDates = new Set(
-      [...dateCounts.entries()]
-        .filter(([, count]) => count >= activeHabits.length)
+      [...sumsByDate.entries()]
+        .filter(([, sums]) => dailyGoals.every((g) => (sums.get(g.id!) ?? 0) >= g.targetValue))
         .map(([date]) => date),
     )
     return computeStreak(fullyDoneDates)
@@ -61,8 +61,13 @@ export default function Dashboard() {
     return workoutsRepo.byDateRange(from, to)
   }, [], [])
 
-  const activeGoals = useLiveQuery(() => goalsRepo.active(), [], [])
-  const habitsDoneToday = (allLogs ?? []).filter((l) => l.completed).length
+  const dailyDoneToday = useLiveQuery(async () => {
+    if (daily.length === 0) return 0
+    const progresses = await Promise.all(daily.map((g) => goalEntriesRepo.progressFor(g)))
+    return progresses.filter((p, i) => p >= daily[i].targetValue).length
+  }, [daily], 0)
+
+  const hasAnyGoals = daily.length + weekly.length + monthly.length + once.length > 0
 
   return (
     <div className="flex flex-col gap-4">
@@ -92,32 +97,43 @@ export default function Dashboard() {
             <span className="text-text-dim">קלוריות</span>
             <span className="font-medium">{todaysCalories} קק"ל</span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-text-dim">הרגלים שהושלמו</span>
-            <span className="font-medium">
-              {habitsDoneToday} / {(habits ?? []).length}
-            </span>
-          </div>
+          {daily.length > 0 && (
+            <div className="flex items-center justify-between">
+              <span className="text-text-dim">יעדים יומיים הושלמו</span>
+              <span dir="ltr" className="inline-block font-medium">
+                {dailyDoneToday} / {daily.length}
+              </span>
+            </div>
+          )}
         </div>
       </Card>
 
-      {(activeGoals ?? []).length > 0 && (
-        <Card>
-          <SectionHeader
-            title="יעדים פעילים"
-            action={
-              <Link to="/goals" className="text-xs text-primary">
-                לכל היעדים
-              </Link>
-            }
-          />
-          <div className="flex flex-col gap-3">
-            {(activeGoals ?? []).slice(0, 3).map((g) => (
-              <GoalMiniRow key={g.id} goal={g} />
-            ))}
+      <Card>
+        <SectionHeader
+          title="המשימות שלי"
+          action={
+            <Link to="/goals" className="text-xs text-primary">
+              נהל יעדים
+            </Link>
+          }
+        />
+        {!hasAnyGoals ? (
+          <p className="text-sm text-text-dim">
+            עדיין אין יעדים מוגדרים.{' '}
+            <Link to="/goals" className="text-primary underline">
+              הגדר יעד ראשון
+            </Link>{' '}
+            כדי לראות כאן את המשימות שלך.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <GoalGroup title="היום" goals={daily} />
+            <GoalGroup title="השבוע" goals={weekly} />
+            <GoalGroup title="החודש" goals={monthly} />
+            <GoalGroup title="חד פעמי" goals={once} />
           </div>
-        </Card>
-      )}
+        )}
+      </Card>
 
       <div className="grid grid-cols-2 gap-3">
         <Link

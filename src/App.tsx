@@ -6,7 +6,6 @@ import Dashboard from './pages/Dashboard'
 import Workouts from './pages/Workouts'
 import Nutrition from './pages/Nutrition'
 import Goals from './pages/Goals'
-import Habits from './pages/Habits'
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true)
@@ -20,7 +19,6 @@ export default function App() {
           <Route path="workouts" element={<Workouts />} />
           <Route path="nutrition" element={<Nutrition />} />
           <Route path="goals" element={<Goals />} />
-          <Route path="habits" element={<Habits />} />
         </Route>
       </Routes>
     </>

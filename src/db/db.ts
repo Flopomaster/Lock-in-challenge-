@@ -1,22 +1,11 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type {
-  AppSetting,
-  BodyMetric,
-  Goal,
-  GoalEntry,
-  Habit,
-  HabitLog,
-  Meal,
-  WorkoutSession,
-} from './types'
+import type { AppSetting, BodyMetric, Goal, GoalEntry, Meal, WorkoutSession } from './types'
 
 class LockInDatabase extends Dexie {
   workouts!: EntityTable<WorkoutSession, 'id'>
   meals!: EntityTable<Meal, 'id'>
   goals!: EntityTable<Goal, 'id'>
   goalEntries!: EntityTable<GoalEntry, 'id'>
-  habits!: EntityTable<Habit, 'id'>
-  habitLogs!: EntityTable<HabitLog, 'id'>
   bodyMetrics!: EntityTable<BodyMetric, 'id'>
   settings!: EntityTable<AppSetting, 'key'>
 
@@ -33,6 +22,11 @@ class LockInDatabase extends Dexie {
     this.version(2).stores({
       goalEntries: '++id, goalId, date, [goalId+date]',
       settings: '&key',
+    })
+    // Habits were folded into daily recurring goals; drop their stores.
+    this.version(3).stores({
+      habits: null,
+      habitLogs: null,
     })
   }
 }

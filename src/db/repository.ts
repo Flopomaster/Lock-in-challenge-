@@ -2,7 +2,7 @@
 // so the storage backend (currently IndexedDB via Dexie) can be swapped for
 // a cloud API later without touching page code.
 import { db } from './db'
-import type { BodyMetric, Goal, Habit, Meal, WorkoutSession } from './types'
+import type { BodyMetric, Goal, Meal, WorkoutSession } from './types'
 import { periodStart, todayStr } from '../lib/dates'
 
 // --- Workouts ---
@@ -56,30 +56,6 @@ export const goalEntriesRepo = {
     const from = periodStart(goal.period!)
     return entries.filter((e) => e.date >= from).reduce((sum, e) => sum + e.amount, 0)
   },
-}
-
-// --- Habits ---
-export const habitsRepo = {
-  add: (h: Omit<Habit, 'id' | 'createdAt'>) => db.habits.add({ ...h, createdAt: Date.now() }),
-  archive: (id: number) => db.habits.update(id, { archivedAt: Date.now() }),
-  remove: async (id: number) => {
-    await db.habitLogs.where('habitId').equals(id).delete()
-    await db.habits.delete(id)
-  },
-  active: () => db.habits.filter((h) => !h.archivedAt).toArray(),
-}
-
-export const habitLogsRepo = {
-  toggle: async (habitId: number, date: string) => {
-    const existing = await db.habitLogs.where('[habitId+date]').equals([habitId, date]).first()
-    if (existing) {
-      await db.habitLogs.update(existing.id!, { completed: !existing.completed })
-    } else {
-      await db.habitLogs.add({ habitId, date, completed: true })
-    }
-  },
-  byDate: (date: string) => db.habitLogs.where('date').equals(date).toArray(),
-  byHabit: (habitId: number) => db.habitLogs.where('habitId').equals(habitId).toArray(),
 }
 
 // --- Body metrics ---

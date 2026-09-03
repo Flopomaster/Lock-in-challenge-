@@ -68,21 +68,6 @@ export interface GoalEntry {
   createdAt: number
 }
 
-export interface Habit {
-  id?: number
-  title: string
-  icon?: string
-  createdAt: number
-  archivedAt?: number
-}
-
-export interface HabitLog {
-  id?: number
-  habitId: number
-  date: string // YYYY-MM-DD
-  completed: boolean
-}
-
 export interface BodyMetric {
   id?: number
   date: string // YYYY-MM-DD
