@@ -2,8 +2,9 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import BodyStatsCard from '../components/BodyStatsCard'
 import { Card, SectionHeader } from '../components/Card'
-import { IconTrash } from '../components/icons'
+import { IconEdit, IconTrash } from '../components/icons'
 import { mealsRepo } from '../db/repository'
+import type { Meal } from '../db/types'
 import { computeFromGrams, searchFoods, type FoodItem } from '../data/foods'
 import { formatHebrewDate, todayStr } from '../lib/dates'
 
@@ -141,6 +142,7 @@ export default function Nutrition() {
   const [protein, setProtein] = useState('')
   const [carbs, setCarbs] = useState('')
   const [fat, setFat] = useState('')
+  const [editingId, setEditingId] = useState<number | null>(null)
 
   const viewDate = date
   const meals = useLiveQuery(() => mealsRepo.byDate(viewDate), [viewDate], [])
@@ -155,21 +157,40 @@ export default function Nutrition() {
     { calories: 0, protein: 0, carbs: 0, fat: 0 },
   )
 
+  function resetForm() {
+    setName('')
+    setCalories('')
+    setProtein('')
+    setCarbs('')
+    setFat('')
+    setEditingId(null)
+  }
+
+  function startEdit(meal: Meal) {
+    setEditingId(meal.id!)
+    setName(meal.name)
+    setCalories(String(meal.calories))
+    setProtein(meal.protein !== undefined ? String(meal.protein) : '')
+    setCarbs(meal.carbs !== undefined ? String(meal.carbs) : '')
+    setFat(meal.fat !== undefined ? String(meal.fat) : '')
+  }
+
   async function handleSubmit() {
     if (!name.trim() || !calories) return
-    await mealsRepo.add({
+    const values = {
       date,
       name: name.trim(),
       calories: Number(calories),
       protein: protein ? Number(protein) : undefined,
       carbs: carbs ? Number(carbs) : undefined,
       fat: fat ? Number(fat) : undefined,
-    })
-    setName('')
-    setCalories('')
-    setProtein('')
-    setCarbs('')
-    setFat('')
+    }
+    if (editingId) {
+      await mealsRepo.update(editingId, values)
+    } else {
+      await mealsRepo.add(values)
+    }
+    resetForm()
   }
 
   return (
@@ -209,7 +230,7 @@ export default function Nutrition() {
       </Card>
 
       <Card>
-        <SectionHeader title="הוספת ארוחה" />
+        <SectionHeader title={editingId ? 'עריכת ארוחה' : 'הוספת ארוחה'} />
         <div className="flex flex-col gap-3">
           <FoodPicker
             onApply={(v) => {
@@ -259,13 +280,24 @@ export default function Nutrition() {
                 className="rounded-lg border border-border bg-surface-hi px-2 py-1.5 text-sm text-text"
               />
             </div>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              className="rounded-lg bg-primary py-2 text-sm font-semibold text-primary-ink"
-            >
-              הוסף ארוחה
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="flex-1 rounded-lg bg-primary py-2 text-sm font-semibold text-primary-ink"
+              >
+                {editingId ? 'עדכן ארוחה' : 'הוסף ארוחה'}
+              </button>
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="rounded-lg border border-border px-4 py-2 text-sm text-text-dim"
+                >
+                  ביטול
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </Card>
@@ -287,13 +319,22 @@ export default function Nutrition() {
                   {m.fat ? ` · שומן ${m.fat}` : ''}
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => m.id && mealsRepo.remove(m.id)}
-                className="text-text-dim hover:text-danger"
-              >
-                <IconTrash size={16} />
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => startEdit(m)}
+                  className="text-text-dim hover:text-primary"
+                >
+                  <IconEdit size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => m.id && mealsRepo.remove(m.id)}
+                  className="text-text-dim hover:text-danger"
+                >
+                  <IconTrash size={16} />
+                </button>
+              </div>
             </Card>
           ))}
         </div>

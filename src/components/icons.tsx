@@ -95,6 +95,15 @@ export function IconMinus({ className, size = 24 }: IconProps) {
   )
 }
 
+export function IconEdit({ className, size = 24 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...stroke}>
+      <path d="M4 20l.9-3.9L15.6 4.4a1.5 1.5 0 0 1 2.1 0l1.9 1.9a1.5 1.5 0 0 1 0 2.1L9 19.1 4 20Z" />
+      <path d="M14 6.5l3.5 3.5" />
+    </svg>
+  )
+}
+
 export function IconTrash({ className, size = 24 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...stroke}>
