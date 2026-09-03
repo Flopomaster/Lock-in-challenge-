@@ -33,11 +33,22 @@
   --gradient-brand: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
 }
 
+html {
+  /* Kill the pull-to-refresh / rubber-band bounce so scrolling feels native, not like a webpage. */
+  overscroll-behavior-y: none;
+  height: 100%;
+}
+
 body {
   margin: 0;
+  height: 100%;
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
+  overscroll-behavior-y: none;
+  /* Removes the gray tap-flash and the double-tap-to-zoom gesture on touch devices. */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 #root {
@@ -46,6 +57,14 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+/* iOS Safari auto-zooms the whole page when a focused input's font-size is under 16px.
+   Force 16px on every form control so tapping a field never triggers that zoom. */
+input,
+select,
+textarea {
+  font-size: 16px !important;
 }
 
 @keyframes fade-in {
