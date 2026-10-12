@@ -1,90 +1,65 @@
-export interface WorkoutSet {
-  reps: number
-  weight: number
+export type Variant = 'classic' | 'hardcore' | 'soullink' | 'custom'
+export type RunStatus = 'active' | 'won' | 'lost'
+
+export interface RuleSet {
+  dupes: boolean
+  shiny: boolean
+  nicknames: boolean
+  levelCaps: boolean
+  noItems: boolean
+  setMode: boolean
 }
 
-export interface WorkoutExercise {
+export interface CustomGame {
   name: string
-  sets: WorkoutSet[]
+  gen: number
+  locations: string[]
 }
 
-export interface WorkoutSession {
+export interface Run {
   id?: number
-  date: string // YYYY-MM-DD
   name: string
-  durationMin?: number
+  gameId: string
+  /** Present for ROM hacks / user-defined games; overrides `gameId`'s data. */
+  customGame?: CustomGame
+  variant: Variant
+  rules: RuleSet
+  customRules: string[]
+  partnerName?: string
+  extraLocations: string[]
+  badges: number
+  status: RunStatus
+  createdAt: number
+  endedAt?: number
+}
+
+export type EncounterStatus = 'party' | 'box' | 'dead' | 'missed'
+
+export interface Death {
+  at: number
+  level?: number
+  killer?: string
+  location?: string
+  cause?: string
+  epitaph?: string
+}
+
+export interface Encounter {
+  id?: number
+  runId: number
+  location: string
+  /** Absent when a missed encounter's species is unknown. */
+  speciesId?: number
+  status: EncounterStatus
+  nickname?: string
+  level?: number
+  nature?: string
+  ability?: string
+  gender?: 'm' | 'f'
+  shiny?: boolean
   notes?: string
-  exercises: WorkoutExercise[]
+  /** Sort key within the party / box. */
+  order: number
   createdAt: number
-}
-
-export interface MealItem {
-  name: string
-  calories: number
-  protein?: number
-  carbs?: number
-  fat?: number
-}
-
-export interface Meal {
-  id?: number
-  date: string // YYYY-MM-DD
-  time?: string
-  name: string
-  /** Sum of all items' calories (or the single value, for a simple meal with no items breakdown). */
-  calories: number
-  protein?: number
-  carbs?: number
-  fat?: number
-  /** Individual foods that make up this meal, when logged via the multi-item flow. */
-  items?: MealItem[]
-  createdAt: number
-}
-
-export type GoalCategory = 'workout' | 'nutrition' | 'weight' | 'custom'
-export type GoalKind = 'recurring' | 'once'
-export type GoalPeriod = 'daily' | 'weekly' | 'monthly'
-
-export interface Goal {
-  id?: number
-  title: string
-  category: GoalCategory
-  kind: GoalKind
-  /** Required when kind === 'recurring'; the window progress resets on. */
-  period?: GoalPeriod
-  targetValue: number
-  unit: string
-  deadline?: string // YYYY-MM-DD, only meaningful for kind === 'once'
-  createdAt: number
-  completedAt?: number
-}
-
-/** A logged contribution toward a goal (e.g. "+0.5L water"). Progress is the sum of entries in the active window. */
-export interface GoalEntry {
-  id?: number
-  goalId: number
-  amount: number
-  date: string // YYYY-MM-DD
-  createdAt: number
-}
-
-export interface BodyMetric {
-  id?: number
-  date: string // YYYY-MM-DD
-  weightKg: number
-  createdAt: number
-}
-
-export interface AppSetting {
-  key: string
-  value: number
-}
-
-/** Single-row local device lock — not a real account, just gates access to this browser's data. */
-export interface AuthRecord {
-  id: 'local'
-  username: string
-  passwordHash: string
-  salt: string
-  createdAt: number
+  death?: Death
 }

@@ -1,98 +1,72 @@
-// Data-access layer. Pages talk to this module only, never to `db` directly,
-// so the storage backend (currently IndexedDB via Dexie) can be swapped for
-// a cloud API later without touching page code.
+import { GEN_MAX_DEX, getGame } from '../data/games'
+import { getSpecies } from '../data/pokedex'
 import { db } from './db'
-import type { BodyMetric, Goal, GoalPeriod, Meal, WorkoutSession } from './types'
-import { periodStart, todayStr } from '../lib/dates'
-import { hashPassword, verifyPassword } from '../lib/password'
+import type { Death, Encounter, EncounterStatus, Run } from './types'
 
-// --- Workouts ---
-export const workoutsRepo = {
-  add: (w: Omit<WorkoutSession, 'id' | 'createdAt'>) =>
-    db.workouts.add({ ...w, createdAt: Date.now() }),
-  update: (id: number, changes: Partial<WorkoutSession>) => db.workouts.update(id, changes),
-  remove: (id: number) => db.workouts.delete(id),
-  all: () => db.workouts.orderBy('date').reverse().toArray(),
-  recent: (limit: number) => db.workouts.orderBy('date').reverse().limit(limit).toArray(),
-  byDateRange: (from: string, to: string) =>
-    db.workouts.where('date').between(from, to, true, true).toArray(),
+export function runLocations(run: Run): string[] {
+  const base = run.customGame ? run.customGame.locations : (getGame(run.gameId)?.locations ?? [])
+  const all = [...base, ...run.extraLocations]
+  return [...new Set(all)]
 }
 
-// --- Nutrition ---
-export const mealsRepo = {
-  add: (m: Omit<Meal, 'id' | 'createdAt'>) => db.meals.add({ ...m, createdAt: Date.now() }),
-  update: (id: number, changes: Partial<Meal>) => db.meals.update(id, changes),
-  remove: (id: number) => db.meals.delete(id),
-  byDate: (date: string) => db.meals.where('date').equals(date).toArray(),
-  byDateRange: (from: string, to: string) =>
-    db.meals.where('date').between(from, to, true, true).toArray(),
+export const runGameName = (run: Run) => run.customGame?.name ?? getGame(run.gameId)?.name ?? run.gameId
+
+export const runMaxBadges = (run: Run) => (run.customGame ? 8 : (getGame(run.gameId)?.badges ?? 8))
+
+export const displayName = (e: Encounter) => e.nickname || getSpecies(e.speciesId)?.name || '???'
+
+export async function createRun(run: Omit<Run, 'id'>): Promise<number> {
+  return (await db.runs.add(run as Run)) as number
 }
 
-// --- Goals ---
-export const goalsRepo = {
-  add: (g: Omit<Goal, 'id' | 'createdAt'>) => db.goals.add({ ...g, createdAt: Date.now() }),
-  update: (id: number, changes: Partial<Goal>) => db.goals.update(id, changes),
-  remove: async (id: number) => {
-    await db.goalEntries.where('goalId').equals(id).delete()
-    await db.goals.delete(id)
-  },
-  all: () => db.goals.orderBy('createdAt').reverse().toArray(),
-  active: () => db.goals.filter((g) => !g.completedAt).toArray(),
+export function updateRun(id: number, patch: Partial<Run>) {
+  return db.runs.update(id, patch)
 }
 
-export const goalEntriesRepo = {
-  add: (goalId: number, amount: number, date: string = todayStr()) =>
-    db.goalEntries.add({ goalId, amount, date, createdAt: Date.now() }),
-  removeLast: async (goalId: number) => {
-    const last = await db.goalEntries.where('goalId').equals(goalId).last()
-    if (last?.id) await db.goalEntries.delete(last.id)
-  },
-  byGoal: (goalId: number) => db.goalEntries.where('goalId').equals(goalId).toArray(),
-  /** Sum of entries within the goal's active window: current day/week/month for recurring goals, all-time for one-off goals. */
-  progressFor: async (goal: Goal): Promise<number> => {
-    const entries = await db.goalEntries.where('goalId').equals(goal.id!).toArray()
-    if (goal.kind === 'once') {
-      return entries.reduce((sum, e) => sum + e.amount, 0)
-    }
-    const from = periodStart(goal.period!)
-    return entries.filter((e) => e.date >= from).reduce((sum, e) => sum + e.amount, 0)
-  },
-  /** Sum of entries within an explicit period window, ignoring the goal's own native period — used to browse a goal at a different granularity (e.g. a daily goal's weekly total). */
-  progressForWindow: async (goal: Goal, windowPeriod: GoalPeriod): Promise<number> => {
-    const entries = await db.goalEntries.where('goalId').equals(goal.id!).toArray()
-    const from = periodStart(windowPeriod)
-    return entries.filter((e) => e.date >= from).reduce((sum, e) => sum + e.amount, 0)
-  },
+export function deleteRun(id: number) {
+  return db.transaction('rw', db.runs, db.encounters, async () => {
+    await db.encounters.where('runId').equals(id).delete()
+    await db.runs.delete(id)
+  })
 }
 
-// --- Body metrics ---
-export const bodyMetricsRepo = {
-  add: (b: Omit<BodyMetric, 'id' | 'createdAt'>) =>
-    db.bodyMetrics.add({ ...b, createdAt: Date.now() }),
-  remove: (id: number) => db.bodyMetrics.delete(id),
-  all: () => db.bodyMetrics.orderBy('date').toArray(),
-  latest: async () => (await db.bodyMetrics.orderBy('date').last()) ?? null,
+async function nextOrder(runId: number, status: EncounterStatus) {
+  const list = await db.encounters.where({ runId }).filter((e) => e.status === status).toArray()
+  return list.reduce((max, e) => Math.max(max, e.order), -1) + 1
 }
 
-// --- App settings (simple key/value, e.g. target weight) ---
-export const settingsRepo = {
-  get: async (key: string) => (await db.settings.get(key))?.value,
-  set: (key: string, value: number) => db.settings.put({ key, value }),
+export async function saveEncounter(enc: Encounter): Promise<void> {
+  if (enc.id) {
+    const prev = await db.encounters.get(enc.id)
+    if (prev && prev.status !== enc.status) enc = { ...enc, order: await nextOrder(enc.runId, enc.status) }
+    await db.encounters.put(enc)
+  } else {
+    await db.encounters.add({ ...enc, order: await nextOrder(enc.runId, enc.status) })
+  }
 }
 
-// --- Local device lock (not a real account system, see lib/password.ts) ---
-export const authRepo = {
-  exists: async () => (await db.auth.get('local')) !== undefined,
-  getUsername: async () => (await db.auth.get('local'))?.username,
-  setCredentials: async (username: string, password: string) => {
-    const { hash, salt } = await hashPassword(password)
-    await db.auth.put({ id: 'local', username, passwordHash: hash, salt, createdAt: Date.now() })
-  },
-  verify: async (username: string, password: string): Promise<boolean> => {
-    const record = await db.auth.get('local')
-    if (!record || record.username !== username) return false
-    return verifyPassword(password, record.salt, record.passwordHash)
-  },
-  /** Clears only the lock credentials — never touches app data (workouts, meals, goals, ...). */
-  clear: () => db.auth.delete('local'),
+export async function moveTo(enc: Encounter, status: EncounterStatus, death?: Death) {
+  await db.encounters.update(enc.id!, {
+    status,
+    order: await nextOrder(enc.runId, status),
+    death: status === 'dead' ? death : undefined,
+  })
+}
+
+export function deleteEncounter(id: number) {
+  return db.encounters.delete(id)
+}
+
+/** Dupes Clause: an already-caught Pokémon (alive or dead) from the same evolution family. */
+export function findDupe(encounters: Encounter[], speciesId: number, excludeId?: number): Encounter | undefined {
+  const chain = getSpecies(speciesId)?.chain
+  return encounters.find(
+    (e) => e.id !== excludeId && e.status !== 'missed' && e.speciesId && getSpecies(e.speciesId)?.chain === chain,
+  )
+}
+
+/** Highest dex number catchable in the run's game (ROM hacks / custom games allow everything). */
+export function runMaxDex(run: Run): number {
+  if (run.customGame) return GEN_MAX_DEX[9]
+  return GEN_MAX_DEX[getGame(run.gameId)?.gen ?? 9]
 }
