@@ -168,6 +168,16 @@ export default function Dashboard() {
         </section>
       )}
 
+      <section>
+        <Label>{t('tools')}</Label>
+        <div className="grid grid-cols-2 gap-2.5">
+          {run.variant === 'soullink' && <Tool to="/soul-link" icon="🔗" label={t('soulLink')} />}
+          <Tool to="/wheel" icon="🎡" label={t('wheel')} />
+          <Tool to="/share" icon="📸" label={t('shareImage')} />
+          <Tool to="/stats" icon="📊" label={t('stats')} />
+        </div>
+      </section>
+
       {(activeRules.length > 0 || run.customRules.length > 0) && (
         <section className="card p-4">
           <Label>{t('runRules')}</Label>
@@ -190,6 +200,15 @@ export default function Dashboard() {
 
       {selected && <PokemonDetail run={run} encounter={selected} encounters={encounters} data={data} onClose={() => setSelected(undefined)} />}
     </div>
+  )
+}
+
+function Tool({ to, icon, label }: { to: string; icon: string; label: string }) {
+  return (
+    <Link to={to} className="card flex items-center gap-2.5 px-3 py-3 font-semibold transition active:scale-[0.98]">
+      <span className="text-xl">{icon}</span>
+      {label}
+    </Link>
   )
 }
 

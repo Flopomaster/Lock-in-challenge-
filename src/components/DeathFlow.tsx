@@ -3,7 +3,9 @@ import { createPortal } from 'react-dom'
 import { displayName, moveTo, runLocations } from '../db/repository'
 import type { Encounter, Run } from '../db/types'
 import type { GameData } from '../data/gameData'
+import { getSpecies } from '../data/pokedex'
 import { playDeathSound } from '../lib/sound'
+import { isAlive } from '../lib/soulLink'
 import { useSettings, useT } from '../lib/settings'
 import { spriteStyleForRun } from '../lib/sprites'
 import Gravestone from './Gravestone'
@@ -24,6 +26,8 @@ export default function DeathFlow({ run, encounter, data, onClose }: Props) {
   const { sound } = useSettings()
   const style = spriteStyleForRun(run)
   const name = displayName(encounter)
+  const partnerMon = run.variant === 'soullink' ? run.partner?.mons[encounter.location] : undefined
+  const linked = partnerMon && isAlive(partnerMon.status) ? partnerMon : undefined
 
   const [stage, setStage] = useState<'form' | 'ceremony'>('form')
   const [level, setLevel] = useState(encounter.level?.toString() ?? '')
@@ -60,6 +64,11 @@ export default function DeathFlow({ run, encounter, data, onClose }: Props) {
         <div className="death-text mt-8">
           <div className="text-2xl font-bold">{t('deathTitle', { name })}</div>
           {epitaph && <div className="mt-2 italic text-white/70">“{epitaph}”</div>}
+          {linked && (
+            <div className="mt-4 text-sm text-white/80">
+              {t('partnerDiesToo', { partner: run.partnerName || t('partner'), mon: linked.nickname || getSpecies(linked.speciesId)?.name || '?' })}
+            </div>
+          )}
         </div>
         <div className="death-actions mt-8">
           <Button tone="soft" onClick={onClose} className="!bg-white/10 !text-white">

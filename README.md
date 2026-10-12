@@ -22,6 +22,14 @@ A mobile-first PWA for tracking Pokémon Nuzlocke runs. Works offline; all data 
 - "Possible here" encounter list per route with dupes marked
 - 13 built-in ROM hacks (Radical Red, Unbound, Emerald Kaizo, Run & Bun, Renegade Platinum, …)
 
+## Features (stage 3)
+
+- Soul Link: share your side as a compact code / link (WhatsApp-friendly), import your partner's, see linked pairs, broken links and type clashes
+- Statistics across all runs: win rate, survival, deadliest foes and places, most caught species
+- Wheel: random Pokémon (randomizers), random box pick, or a random challenge rule
+- Shareable team / Hall of Fame image
+- Catch celebration animation
+
 ## Development
 
 ```sh

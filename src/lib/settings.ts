@@ -7,6 +7,7 @@ export interface Settings {
   lang: Lang
   theme: Theme
   sound: boolean
+  playerName?: string
   currentRunId?: number
 }
 

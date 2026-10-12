@@ -315,3 +315,64 @@ textarea {
     animation-delay: 0ms !important;
   }
 }
+
+/* ---------- Catch celebration ---------- */
+
+@keyframes catch-wobble {
+  0% {
+    transform: translateY(-120px) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  25%,
+  45%,
+  65% {
+    transform: rotate(0deg);
+  }
+  32% {
+    transform: rotate(-22deg);
+  }
+  52% {
+    transform: rotate(18deg);
+  }
+  72% {
+    transform: rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  80%,
+  100% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+
+@keyframes catch-reveal {
+  0%,
+  72% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  85% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  92% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+.catch-ball {
+  animation: catch-wobble 1.9s cubic-bezier(0.3, 0.7, 0.4, 1) both;
+}
+
+.catch-reveal {
+  animation: catch-reveal 2.2s ease-out both;
+}

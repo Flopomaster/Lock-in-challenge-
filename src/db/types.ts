@@ -16,6 +16,20 @@ export interface CustomGame {
   locations: string[]
 }
 
+/** One of the Soul Link partner's Pokémon, as imported from their share code. */
+export interface PartnerMon {
+  speciesId?: number
+  nickname?: string
+  level?: number
+  status: EncounterStatus
+}
+
+export interface SoulLinkPartner {
+  importedAt: number
+  /** Partner's encounters keyed by location — paired with ours by the same location. */
+  mons: Record<string, PartnerMon>
+}
+
 export interface Run {
   id?: number
   name: string
@@ -26,6 +40,7 @@ export interface Run {
   rules: RuleSet
   customRules: string[]
   partnerName?: string
+  partner?: SoulLinkPartner
   extraLocations: string[]
   /** Manual badge count, used only for games without boss data. */
   badges: number

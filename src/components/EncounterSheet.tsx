@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { getSpecies } from '../data/pokedex'
 import { deleteEncounter, displayName, findDupe, runMaxDex, saveEncounter } from '../db/repository'
 import type { Encounter, EncounterStatus, Run } from '../db/types'
 import { playCatchSound } from '../lib/sound'
 import { useSettings, useT } from '../lib/settings'
 import { spriteStyleForRun } from '../lib/sprites'
+import { CATCH_EVENT, type CatchDetail } from './CatchCelebration'
 import Sheet from './Sheet'
 import SpeciesPicker from './SpeciesPicker'
 import Sprite from './Sprite'
@@ -49,7 +51,12 @@ export default function EncounterSheet({ run, location, existing, encounters, op
       order: existing?.order ?? 0,
       createdAt: existing?.createdAt ?? Date.now(),
     })
-    if (!existing && caught && sound) playCatchSound()
+    if (!existing && caught && speciesId) {
+      if (sound) playCatchSound()
+      window.dispatchEvent(
+        new CustomEvent<CatchDetail>(CATCH_EVENT, { detail: { speciesId, name: nickname.trim() || getSpecies(speciesId)?.name || '', shiny } }),
+      )
+    }
     onClose()
   }
 

@@ -48,10 +48,15 @@ export default function Runs() {
     <PageShell
       title={t('runs')}
       action={
-        <Button className="!px-3 !py-1.5 text-sm" onClick={() => navigate('/runs/new')}>
+        <>
+          <button type="button" onClick={() => navigate('/stats')} className="rounded-full p-2 text-xl" aria-label={t('stats')}>
+            📊
+          </button>
+          <Button className="!px-3 !py-1.5 text-sm" onClick={() => navigate('/runs/new')}>
           <IconPlus size={18} />
           {t('newRun')}
-        </Button>
+          </Button>
+        </>
       }
     >
       <div className="space-y-5">

@@ -4,7 +4,9 @@ import { useCurrentRun, type CurrentRun } from '../db/hooks'
 import { runGameName } from '../db/repository'
 import type { RunContext } from '../lib/runContext'
 import { useT } from '../lib/settings'
+import { spriteStyleForRun } from '../lib/sprites'
 import { IconBadge, IconGrave, IconHome, IconMap, IconSettings, IconSwap, IconTeam, Pokeball } from './icons'
+import CatchCelebration from './CatchCelebration'
 import Welcome from './Welcome'
 
 export default function Layout() {
@@ -47,6 +49,7 @@ export default function Layout() {
         {loading ? null : run ? <Outlet context={{ run, encounters: current.encounters, data: data ?? null } satisfies RunContext} /> : <Welcome />}
       </main>
 
+      {run && <CatchCelebration style={spriteStyleForRun(run)} />}
       {run && (
         <nav className="flex shrink-0 border-t border-border bg-surface" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
           {nav.map(({ to, label, Icon, end }) => (

@@ -7,7 +7,7 @@ import { useSettings, useT, type Theme } from '../lib/settings'
 
 export default function Settings() {
   const t = useT()
-  const { lang, theme, sound, currentRunId, update } = useSettings()
+  const { lang, theme, sound, playerName, currentRunId, update } = useSettings()
   const fileRef = useRef<HTMLInputElement>(null)
 
   async function onImport(file: File | undefined) {
@@ -24,6 +24,16 @@ export default function Settings() {
   return (
     <PageShell title={t('settings')}>
       <div className="space-y-5">
+        <div>
+          <Label>{t('playerName')}</Label>
+          <input
+            className="field"
+            value={playerName ?? ''}
+            onChange={(e) => update({ playerName: e.target.value || undefined })}
+            placeholder={t('playerNamePlaceholder')}
+            maxLength={24}
+          />
+        </div>
         <div>
           <Label>{t('language')}</Label>
           <Segmented
