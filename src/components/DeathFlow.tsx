@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { displayName, moveTo, runLocations } from '../db/repository'
 import type { Encounter, Run } from '../db/types'
+import type { GameData } from '../data/gameData'
 import { playDeathSound } from '../lib/sound'
 import { useSettings, useT } from '../lib/settings'
 import { spriteStyleForRun } from '../lib/sprites'
@@ -13,11 +14,12 @@ import { Button, Label } from './ui'
 interface Props {
   run: Run
   encounter: Encounter
+  data: GameData | null
   onClose: () => void
 }
 
 /** Asks how the Pokémon died, then plays a full-screen funeral. */
-export default function DeathFlow({ run, encounter, onClose }: Props) {
+export default function DeathFlow({ run, encounter, data, onClose }: Props) {
   const t = useT()
   const { sound } = useSettings()
   const style = spriteStyleForRun(run)
@@ -100,7 +102,7 @@ export default function DeathFlow({ run, encounter, onClose }: Props) {
           <Label>{t('deathLocation')}</Label>
           <input className="field" list="death-locations" value={location} onChange={(e) => setLocation(e.target.value)} />
           <datalist id="death-locations">
-            {runLocations(run).map((l) => (
+            {runLocations(run, data).map((l) => (
               <option key={l} value={l} />
             ))}
           </datalist>

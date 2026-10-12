@@ -14,9 +14,11 @@ interface Props {
   /** Limit choices to these species (e.g. an evolution family). */
   only?: Species[]
   allowUnknown?: boolean
+  /** Focus the search field on open (skip it when quick picks are shown, so the keyboard doesn't cover them). */
+  autoFocus?: boolean
 }
 
-export default function SpeciesPicker({ value, onChange, style, maxDex = POKEDEX.length, only, allowUnknown }: Props) {
+export default function SpeciesPicker({ value, onChange, style, maxDex = POKEDEX.length, only, allowUnknown, autoFocus = true }: Props) {
   const t = useT()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(!value)
@@ -52,7 +54,7 @@ export default function SpeciesPicker({ value, onChange, style, maxDex = POKEDEX
       <div className="flex items-center gap-2 border-b border-border px-3">
         <IconSearch size={18} className="text-text-dim" />
         <input
-          autoFocus={!only}
+          autoFocus={autoFocus && !only}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t('searchPokemon')}

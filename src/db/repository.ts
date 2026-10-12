@@ -1,10 +1,15 @@
+import type { GameData } from '../data/gameData'
 import { GEN_MAX_DEX, getGame } from '../data/games'
 import { getSpecies } from '../data/pokedex'
 import { db } from './db'
 import type { Death, Encounter, EncounterStatus, Run } from './types'
 
-export function runLocations(run: Run): string[] {
-  const base = run.customGame ? run.customGame.locations : (getGame(run.gameId)?.locations ?? [])
+export function runLocations(run: Run, data: GameData | null): string[] {
+  const base = run.customGame
+    ? run.customGame.locations
+    : data
+      ? data.locations.map((l) => l.n)
+      : (getGame(run.gameId)?.locations ?? [])
   const all = [...base, ...run.extraLocations]
   return [...new Set(all)]
 }
@@ -14,6 +19,13 @@ export const runGameName = (run: Run) => run.customGame?.name ?? getGame(run.gam
 export const runMaxBadges = (run: Run) => (run.customGame ? 8 : (getGame(run.gameId)?.badges ?? 8))
 
 export const displayName = (e: Encounter) => e.nickname || getSpecies(e.speciesId)?.name || '???'
+
+export function toggleBossDefeated(run: Run, bossId: string) {
+  const defeated = new Set(run.defeatedBosses ?? [])
+  if (defeated.has(bossId)) defeated.delete(bossId)
+  else defeated.add(bossId)
+  return db.runs.update(run.id!, { defeatedBosses: [...defeated] })
+}
 
 export async function createRun(run: Omit<Run, 'id'>): Promise<number> {
   return (await db.runs.add(run as Run)) as number
@@ -67,6 +79,7 @@ export function findDupe(encounters: Encounter[], speciesId: number, excludeId?:
 
 /** Highest dex number catchable in the run's game (ROM hacks / custom games allow everything). */
 export function runMaxDex(run: Run): number {
-  if (run.customGame) return GEN_MAX_DEX[9]
-  return GEN_MAX_DEX[getGame(run.gameId)?.gen ?? 9]
+  const game = getGame(run.gameId)
+  if (run.customGame || !game || game.hack) return GEN_MAX_DEX[9]
+  return GEN_MAX_DEX[game.gen]
 }

@@ -54,7 +54,8 @@ export default function NewRun() {
     navigate('/', { replace: true })
   }
 
-  const gens = [...new Set(GAMES.map((g) => g.gen))]
+  const official = GAMES.filter((g) => !g.hack)
+  const gens = [...new Set(official.map((g) => g.gen))]
 
   return (
     <PageShell title={t('newRun')}>
@@ -64,13 +65,20 @@ export default function NewRun() {
           <select className="field" value={gameId} onChange={(e) => setGameId(e.target.value)}>
             {gens.map((gen) => (
               <optgroup key={gen} label={t('generation', { n: gen })}>
-                {GAMES.filter((g) => g.gen === gen).map((g) => (
+                {official.filter((g) => g.gen === gen).map((g) => (
                   <option key={g.id} value={g.id}>
                     {g.name}
                   </option>
                 ))}
               </optgroup>
             ))}
+            <optgroup label={t('romHacks')}>
+              {GAMES.filter((g) => g.hack).map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </optgroup>
             <option value={CUSTOM}>✏️ {t('customGame')}</option>
           </select>
         </div>

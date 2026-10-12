@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
+import Bosses from './pages/Bosses'
 import Dashboard from './pages/Dashboard'
 import Graveyard from './pages/Graveyard'
 import Locations from './pages/Locations'
@@ -15,6 +16,7 @@ export default function App() {
         <Route index element={<Dashboard />} />
         <Route path="routes" element={<Locations />} />
         <Route path="team" element={<Team />} />
+        <Route path="bosses" element={<Bosses />} />
         <Route path="graveyard" element={<Graveyard />} />
       </Route>
       <Route path="runs" element={<Runs />} />

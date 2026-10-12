@@ -7,11 +7,12 @@ interface SpriteProps {
   size?: number
   shiny?: boolean
   dead?: boolean
+  formId?: number
   className?: string
 }
 
-export default function Sprite({ id, style, size = 56, shiny, dead, className = '' }: SpriteProps) {
-  const urls = id ? spriteUrls(id, style, shiny) : []
+export default function Sprite({ id, style, size = 56, shiny, dead, formId, className = '' }: SpriteProps) {
+  const urls = id ? spriteUrls(id, style, shiny, formId) : []
   const key = urls.join('|')
   const [failed, setFailed] = useState({ key, count: 0 })
   const attempt = failed.key === key ? failed.count : 0

@@ -13,6 +13,15 @@ A mobile-first PWA for tracking Pokémon Nuzlocke runs. Works offline; all data 
 - Graveyard with killer, location, cause and epitaph — and a proper funeral
 - Game-accurate sprites (Gen 1–6 per-game sprites, modern sprites after)
 
+## Features (stage 2)
+
+- Boss list per game (gyms, league, rivals, villains, titans) with full teams, moves, abilities, items and weaknesses
+- Level caps, "next boss" on the dashboard, over-cap warnings, badges tracked from defeated gyms
+- Rival teams matched to your starter
+- Party type-matchup chart (generation-accurate type chart)
+- "Possible here" encounter list per route with dupes marked
+- 13 built-in ROM hacks (Radical Red, Unbound, Emerald Kaizo, Run & Bun, Renegade Platinum, …)
+
 ## Development
 
 ```sh
@@ -21,3 +30,10 @@ npm run dev
 ```
 
 Pokémon data (`src/data/pokedex.json`) is bundled from PokéAPI's static data mirror. Regenerate with `python3 scripts/build-pokedex.py`.
+
+Route lists and boss teams (`src/data/games/*.json`) are converted from [domtronn/nuzlocke.data](https://github.com/domtronn/nuzlocke.data):
+
+```sh
+git clone --depth 1 https://github.com/domtronn/nuzlocke.data /tmp/nuzlocke.data
+python3 scripts/build-games.py /tmp/nuzlocke.data
+```

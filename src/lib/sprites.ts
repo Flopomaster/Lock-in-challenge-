@@ -19,9 +19,11 @@ export function spriteStyleForRun(run: Run | undefined): SpriteStyle {
  * Candidate URLs, best first: the game-accurate sprite when the species existed in that
  * generation, then the modern sprite as a fallback (e.g. Gen 1 has no shiny sprites).
  */
-export function spriteUrls(id: number, style: SpriteStyle, shiny = false): string[] {
+export function spriteUrls(id: number, style: SpriteStyle, shiny = false, formId?: number): string[] {
   const s = shiny ? 'shiny/' : ''
   const urls: string[] = []
+  // Regional / alternate forms only have modern sprites.
+  if (formId) urls.push(`${BASE}/${s}${formId}.png`)
   if (style.folder && id <= GEN_MAX_DEX[style.gen] && !(shiny && style.gen === 1)) {
     urls.push(`${BASE}/versions/${style.folder}/${s}${id}.png`)
   }

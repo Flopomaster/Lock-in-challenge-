@@ -21,13 +21,14 @@ export function Button({ tone = 'primary', className = '', ...props }: ButtonHTM
   )
 }
 
-export function TypeBadge({ type, small }: { type: string; small?: boolean }) {
+export function TypeBadge({ type, small, suffix }: { type: string; small?: boolean; suffix?: string }) {
   return (
     <span
       className={`inline-block rounded-full font-semibold uppercase tracking-wide text-white ${small ? 'px-1.5 py-px text-[9px]' : 'px-2 py-0.5 text-[10px]'}`}
       style={{ background: TYPE_COLORS[type] ?? '#888', textShadow: '0 1px 1px rgba(0,0,0,.25)' }}
     >
       {type}
+      {suffix && <span dir="ltr"> {suffix}</span>}
     </span>
   )
 }

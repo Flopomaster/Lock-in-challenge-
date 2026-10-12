@@ -80,7 +80,11 @@ export default function Settings() {
             }}
           />
         </div>
-        <p className="text-center text-xs text-text-dim">{t('dataCredit')}</p>
+        <p className="text-center text-xs text-text-dim">
+          {t('dataCredit')}
+          <br />
+          {t('bossDataCredit')}
+        </p>
       </div>
     </PageShell>
   )

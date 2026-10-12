@@ -27,7 +27,10 @@ export interface Run {
   customRules: string[]
   partnerName?: string
   extraLocations: string[]
+  /** Manual badge count, used only for games without boss data. */
   badges: number
+  /** Boss ids (from the game's data) marked as beaten. */
+  defeatedBosses?: string[]
   status: RunStatus
   createdAt: number
   endedAt?: number

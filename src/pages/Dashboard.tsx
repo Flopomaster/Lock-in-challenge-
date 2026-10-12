@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import BossCard from '../components/BossCard'
 import Gravestone from '../components/Gravestone'
 import PokemonDetail from '../components/PokemonDetail'
 import PokemonTile from '../components/PokemonTile'
@@ -7,8 +8,9 @@ import Sprite from '../components/Sprite'
 import { IconBadge, IconPlus, IconSkull, IconTrophy } from '../components/icons'
 import { Label, Warning } from '../components/ui'
 import { byOrder } from '../db/hooks'
-import { displayName, runLocations, runMaxBadges, updateRun } from '../db/repository'
+import { displayName, runLocations, runMaxBadges, toggleBossDefeated, updateRun } from '../db/repository'
 import type { Encounter } from '../db/types'
+import { isDefeated, levelCap, nextBoss, starterType } from '../lib/bosses'
 import { RULES } from '../lib/rules'
 import { useRun } from '../lib/runContext'
 import { useT } from '../lib/settings'
@@ -16,7 +18,7 @@ import { spriteStyleForRun } from '../lib/sprites'
 
 export default function Dashboard() {
   const t = useT()
-  const { run, encounters } = useRun()
+  const { run, encounters, data } = useRun()
   const style = spriteStyleForRun(run)
   const [selected, setSelected] = useState<Encounter>()
 
@@ -24,10 +26,16 @@ export default function Dashboard() {
   const alive = encounters.filter((e) => e.status === 'party' || e.status === 'box').length
   const dead = encounters.filter((e) => e.status === 'dead')
   const recentDeaths = [...dead].sort((a, b) => (b.death?.at ?? 0) - (a.death?.at ?? 0)).slice(0, 3)
-  const totalLocations = runLocations(run).length
+  const totalLocations = runLocations(run, data).length
   const visited = new Set(encounters.map((e) => e.location)).size
   const maxBadges = runMaxBadges(run)
   const activeRules = RULES.filter((r) => run.rules[r.key])
+
+  const starter = starterType(encounters, style.gen)
+  const gyms = data?.bosses.filter((b) => b.type === 'gym-leader') ?? []
+  const next = nextBoss(run, data)
+  const cap = next ? levelCap(next, starter) : undefined
+  const overCap = cap ? party.filter((e) => (e.level ?? 0) > cap) : []
 
   const setBadges = (n: number) => updateRun(run.id!, { badges: Math.max(0, Math.min(maxBadges, n)) })
 
@@ -46,7 +54,44 @@ export default function Dashboard() {
         <Stat label={t('encounters')} value={`${visited}/${totalLocations}`} />
       </div>
 
-      {maxBadges > 0 && (
+      {next && cap !== undefined && (
+        <section>
+          <Label>{t('nextBoss')}</Label>
+          <BossCard key={next.id} boss={next} run={run} starter={starter} style={style} />
+          {run.rules.levelCaps &&
+            overCap.map((e) => (
+              <div key={e.id} className="mt-2">
+                <Warning>{t('overCap', { name: displayName(e), level: e.level!, cap })}</Warning>
+              </div>
+            ))}
+        </section>
+      )}
+      {data && data.bosses.length > 0 && !next && <div className="card p-4 text-center font-semibold text-good">🏆 {t('allBossesDefeated')}</div>}
+
+      {gyms.length > 0 ? (
+        <div className="card p-4">
+          <div className="flex items-center justify-between">
+            <Label>{t('badges')}</Label>
+            <span className="font-bold tabular-nums">
+              {gyms.filter((g) => isDefeated(run, g)).length}/{gyms.length}
+            </span>
+          </div>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {gyms.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                title={g.name}
+                onClick={() => toggleBossDefeated(run, g.id)}
+                className={`rounded-full p-1 transition ${isDefeated(run, g) ? 'bg-accent/20 text-accent' : 'bg-surface-hi text-text-dim opacity-40'}`}
+              >
+                <IconBadge size={18} />
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        maxBadges > 0 && (
         <div className="card p-4">
           <div className="flex items-center justify-between">
             <Label>{t('badges')}</Label>
@@ -75,6 +120,7 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
+        )
       )}
 
       <section>
@@ -88,7 +134,7 @@ export default function Dashboard() {
         ) : (
           <div className="grid grid-cols-3 gap-2.5">
             {party.map((e) => (
-              <PokemonTile key={e.id} encounter={e} style={style} onClick={() => setSelected(e)} />
+              <PokemonTile key={e.id} encounter={e} style={style} overCap={run.rules.levelCaps && overCap.includes(e)} onClick={() => setSelected(e)} />
             ))}
           </div>
         )}
@@ -142,7 +188,7 @@ export default function Dashboard() {
         </section>
       )}
 
-      {selected && <PokemonDetail run={run} encounter={selected} encounters={encounters} onClose={() => setSelected(undefined)} />}
+      {selected && <PokemonDetail run={run} encounter={selected} encounters={encounters} data={data} onClose={() => setSelected(undefined)} />}
     </div>
   )
 }

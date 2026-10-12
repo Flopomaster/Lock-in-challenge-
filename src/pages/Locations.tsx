@@ -23,7 +23,7 @@ type Filter = 'all' | 'todo' | 'done'
 
 export default function Locations() {
   const t = useT()
-  const { run, encounters } = useRun()
+  const { run, encounters, data } = useRun()
   const style = spriteStyleForRun(run)
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
@@ -33,7 +33,7 @@ export default function Locations() {
   const byLocation = useMemo(() => new Map(encounters.map((e) => [e.location, e])), [encounters])
   const locations = useMemo(() => {
     // Keep encounters whose location was removed from the list visible too.
-    const all = runLocations(run)
+    const all = runLocations(run, data)
     for (const e of encounters) if (!all.includes(e.location)) all.push(e.location)
     const q = query.trim().toLowerCase()
     return all.filter((l) => {
@@ -42,7 +42,7 @@ export default function Locations() {
       if (filter === 'done') return byLocation.has(l)
       return true
     })
-  }, [run, encounters, byLocation, filter, query])
+  }, [run, data, encounters, byLocation, filter, query])
 
   return (
     <div className="space-y-3">
@@ -91,13 +91,20 @@ export default function Locations() {
       </Button>
 
       {open && (
-        <EncounterSheet run={run} location={open} existing={byLocation.get(open)} encounters={encounters} onClose={() => setOpen(undefined)} />
+        <EncounterSheet
+          run={run}
+          location={open}
+          existing={byLocation.get(open)}
+          encounters={encounters}
+          options={data?.locations.find((l) => l.n === open)?.e}
+          onClose={() => setOpen(undefined)}
+        />
       )}
       {adding && (
         <AddLocationSheet
           onClose={() => setAdding(false)}
           onAdd={(name) => updateRun(run.id!, { extraLocations: [...run.extraLocations, name] })}
-          existing={runLocations(run)}
+          existing={runLocations(run, data)}
         />
       )}
     </div>

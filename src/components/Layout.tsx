@@ -1,20 +1,24 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
+import { useGameData } from '../data/gameData'
 import { useCurrentRun, type CurrentRun } from '../db/hooks'
 import { runGameName } from '../db/repository'
 import type { RunContext } from '../lib/runContext'
 import { useT } from '../lib/settings'
-import { IconGrave, IconHome, IconMap, IconSettings, IconSwap, IconTeam, Pokeball } from './icons'
+import { IconBadge, IconGrave, IconHome, IconMap, IconSettings, IconSwap, IconTeam, Pokeball } from './icons'
 import Welcome from './Welcome'
 
 export default function Layout() {
   const t = useT()
   const current: CurrentRun = useCurrentRun()
   const { run } = current
+  const data = useGameData(run && !run.customGame ? run.gameId : undefined)
+  const loading = current.loading || data === undefined
 
   const nav = [
     { to: '/', label: t('navHome'), Icon: IconHome, end: true },
     { to: '/routes', label: t('navRoutes'), Icon: IconMap },
     { to: '/team', label: t('navTeam'), Icon: IconTeam },
+    ...(data?.bosses.length ? [{ to: '/bosses', label: t('navBosses'), Icon: IconBadge }] : []),
     { to: '/graveyard', label: t('navGraveyard'), Icon: IconGrave },
   ]
 
@@ -40,7 +44,7 @@ export default function Layout() {
       </header>
 
       <main className="flex-1 overflow-y-auto px-4 py-4">
-        {current.loading ? null : run ? <Outlet context={{ run, encounters: current.encounters } satisfies RunContext} /> : <Welcome />}
+        {loading ? null : run ? <Outlet context={{ run, encounters: current.encounters, data: data ?? null } satisfies RunContext} /> : <Welcome />}
       </main>
 
       {run && (

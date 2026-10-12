@@ -6,6 +6,7 @@ import { useSettings, useT } from '../lib/settings'
 import { spriteStyleForRun } from '../lib/sprites'
 import Sheet from './Sheet'
 import SpeciesPicker from './SpeciesPicker'
+import Sprite from './Sprite'
 import { Button, Label, Segmented, Toggle, Warning } from './ui'
 
 interface Props {
@@ -13,10 +14,12 @@ interface Props {
   location: string
   existing?: Encounter
   encounters: Encounter[]
+  /** Species that can be found at this location, when the game's data knows. */
+  options?: number[]
   onClose: () => void
 }
 
-export default function EncounterSheet({ run, location, existing, encounters, onClose }: Props) {
+export default function EncounterSheet({ run, location, existing, encounters, options, onClose }: Props) {
   const t = useT()
   const { sound } = useSettings()
   const style = spriteStyleForRun(run)
@@ -75,9 +78,43 @@ export default function EncounterSheet({ run, location, existing, encounters, on
       }
     >
       <div className="space-y-4">
+        {options && options.length > 0 && (
+          <div>
+            <Label>{t('possibleEncounters')}</Label>
+            <div className="flex flex-wrap gap-1">
+              {options.map((id) => {
+                const isDupe = run.rules.dupes && !!findDupe(encounters, id, existing?.id)
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setSpeciesId(id)}
+                    className={`relative rounded-xl border p-0.5 transition ${id === speciesId ? 'border-primary bg-primary-bg' : 'border-transparent bg-surface-hi'} ${isDupe ? 'opacity-40' : ''}`}
+                  >
+                    <Sprite id={id} style={style} size={44} />
+                    {isDupe && (
+                      <span className="absolute -bottom-1 start-1/2 -translate-x-1/2 rounded bg-warn px-1 text-[8px] font-bold uppercase text-white rtl:translate-x-1/2">
+                        {t('dupe')}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         <div>
           <Label>{t('pokemon')}</Label>
-          <SpeciesPicker value={speciesId} onChange={setSpeciesId} style={style} maxDex={runMaxDex(run)} allowUnknown={!caught} />
+          <SpeciesPicker
+            key={speciesId}
+            value={speciesId}
+            onChange={setSpeciesId}
+            style={style}
+            maxDex={runMaxDex(run)}
+            allowUnknown={!caught}
+            autoFocus={!options?.length}
+          />
         </div>
 
         {dupe && (
