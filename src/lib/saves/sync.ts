@@ -53,7 +53,12 @@ export function planSync(
   const ownPids = new Set([...save.party, ...save.boxes].map((m) => m.pid))
   // Linked to the other game by an earlier sync: forget that link and match them afresh. Ones that
   // match a Pokémon in this game are the player's own and get fixed; the rest are offered for removal.
-  const relinked = new Set(encounters.filter((e) => e.pid !== undefined && otherPids.has(e.pid) && !ownPids.has(e.pid)))
+  // Switching to a different trainer than the last sync (e.g. the wrong file was read before) puts
+  // everything linked to that earlier save in the same bucket.
+  const trainerChanged = !!run.saveTrainer && (run.saveTrainer.tid !== save.tid || run.saveTrainer.sid !== save.sid)
+  const relinked = new Set(
+    encounters.filter((e) => e.pid !== undefined && !ownPids.has(e.pid) && (trainerChanged || otherPids.has(e.pid))),
+  )
   encounters = encounters.map((e) => (relinked.has(e) ? { ...e, pid: undefined } : e))
 
   const all = [...save.party, ...save.boxes]

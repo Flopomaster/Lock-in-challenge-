@@ -214,3 +214,16 @@ if (process.env.SAVE_OUT) {
   console.log('leftover PC copy: ok')
   save = backup
 }
+
+// The wrong file was synced before (another trainer): everything linked to it is offered for removal.
+{
+  const { planSync } = await import('../../src/lib/saves/sync')
+  const ethan = games.find((g) => g.trainer === 'Ethan')!
+  const run = { id: 1, defeatedBosses: [], saveTrainer: { tid: 17730, sid: 30662 } } as never
+  const enc = (id: number, location: string, speciesId: number, pid?: number) =>
+    ({ id, runId: 1, location, speciesId, pid, status: 'box', order: 0, createdAt: id }) as never
+  const plan = planSync(ethan, run, [enc(1, 'Bell Tower', 250, 4242), enc(2, 'New Bark Town', 155)], ['New Bark Town', 'Route 29', 'Route 4'], [])
+  assert.deepEqual(plan.wrongGame.map((e: { id: number }) => e.id), [1], 'Ho-Oh from the previous trainer')
+  assert.equal(plan.missing.length, 0)
+  console.log('trainer change cleanup: ok')
+}
