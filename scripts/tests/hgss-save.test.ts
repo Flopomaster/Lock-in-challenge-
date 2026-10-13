@@ -69,31 +69,46 @@ function makeMon({ pid, species, exp, level, nickname, met, ability, gender, egg
   return d
 }
 
+function crc16(d: Uint8Array, start: number, end: number) {
+  let top = 0xff
+  let bot = 0xff
+  for (let i = start; i < end; i++) {
+    let x = d[i] ^ top
+    x ^= x >> 4
+    top = (bot ^ (x >> 3) ^ (x << 4)) & 0xff
+    bot = (x ^ (x << 5)) & 0xff
+  }
+  return (top << 8) | bot
+}
+
 const TID = 12345
 const SID = 54321
-const save = new Uint8Array(0x80000)
+let save = new Uint8Array(0x80000)
 const GENERAL = 0xf628
 const STORAGE_START = 0xf700
 const STORAGE = 0x12310
 
-function writeBlocks(base: number, counter: number, party: MonSpec[], box: MonSpec[], trainer: string) {
+function writeBlocks(base: number, counter: number, party: MonSpec[], box: MonSpec[], trainer: string, tid = TID, sid = SID) {
   const g = base
   encodeName(trainer).forEach((v, i) => w16(save, g + 0x64 + i * 2, v))
   w16(save, g + 0x64 + trainer.length * 2, 0xffff)
-  w16(save, g + 0x64 + 0x10, TID)
-  w16(save, g + 0x64 + 0x12, SID)
+  w16(save, g + 0x64 + 0x10, tid)
+  w16(save, g + 0x64 + 0x12, sid)
   save[g + 0x64 + 0x1a] = 0b00000011 // Falkner, Bugsy
   save[g + 0x94] = party.length
-  party.forEach((m, i) => save.set(makeMon(m, true, TID, SID), g + 0x98 + i * 236))
+  party.forEach((m, i) => save.set(makeMon(m, true, tid, sid), g + 0x98 + i * 236))
   w32(save, g + GENERAL - 0x14, counter)
   w32(save, g + GENERAL - 0xc, GENERAL)
+  w16(save, g + GENERAL - 2, crc16(save, g, g + GENERAL - 0x10))
   const s = base + STORAGE_START
-  box.forEach((m, i) => save.set(makeMon(m, false, TID, SID), s + Math.floor(i / 30) * 0x1000 + (i % 30) * 136))
+  box.forEach((m, i) => save.set(makeMon(m, false, tid, sid), s + Math.floor(i / 30) * 0x1000 + (i % 30) * 136))
   w32(save, s + STORAGE - 0x14, counter)
+  w16(save, s + STORAGE - 2, crc16(save, s, s + STORAGE - 0x10))
 }
 
-// Stale copy in partition 1, current one (higher counter) in partition 2.
-writeBlocks(0, 5, [{ pid: 1, species: 1, exp: 0, level: 5, met: 126, ability: 65, gender: 0 }], [], 'OLD')
+// The real-world trap: an OLD game (different trainer) left in partition 1 with a HIGHER save
+// counter than the current game, because starting a New Game restarts the counter.
+writeBlocks(0, 500, [{ pid: 1, species: 1, exp: 0, level: 5, met: 126, ability: 65, gender: 0 }], [{ pid: 2, species: 4, exp: 0, met: 177, ability: 66, gender: 0 }], 'OLD', 111, 222)
 writeBlocks(
   0x40000,
   6,
@@ -110,7 +125,13 @@ writeBlocks(
   'Ethan',
 )
 
-const parsed = parseHgssSave(save.buffer)
+const games = parseHgssSave(save.buffer)
+assert.equal(games.length, 2, 'both games are offered')
+assert.deepEqual(games.map((g) => g.trainer).sort(), ['Ethan', 'OLD'])
+const old = games.find((g) => g.trainer === 'OLD')!
+assert.deepEqual(old.boxes.map((m) => m.speciesId), [4], "old game keeps its own PC")
+const parsed = games.find((g) => g.trainer === 'Ethan')!
+assert.equal(parsed.tid, TID)
 assert.equal(parsed.trainer, 'Ethan')
 assert.deepEqual(parsed.badges, ['Falkner', 'Bugsy'])
 assert.equal(parsed.party.length, 2, 'egg is skipped')
@@ -130,10 +151,46 @@ assert.equal(parsed.boxes[0].level, 12)
 assert.equal(parsed.boxes[0].inParty, false)
 assert.equal(parsed.boxes[1].shiny, true)
 assert.equal(parsed.boxes[0].shiny, false)
+// Two copies of the same game collapse into one (the newer); a corrupt copy is ignored.
+const current = save.slice()
+save = new Uint8Array(0x80000)
+writeBlocks(0, 7, [{ pid: 9, species: 152, exp: 0, level: 9, met: 126, ability: 65, gender: 0 }], [], 'Ethan')
+writeBlocks(0x40000, 6, [{ pid: 9, species: 152, exp: 0, level: 5, met: 126, ability: 65, gender: 0 }], [], 'Ethan')
+let same = parseHgssSave(save.buffer)
+assert.equal(same.length, 1)
+assert.equal(same[0].party[0].level, 9, 'newer copy wins')
+save[100] ^= 0xff // corrupt the newer copy
+same = parseHgssSave(save.buffer)
+assert.equal(same.length, 1)
+assert.equal(same[0].party[0].level, 5, 'corrupt copy is skipped')
+save = current
+
 console.log('hgss save reader: all assertions passed', parsed.party.map((m) => m.metLocation), parsed.boxes.map((m) => [m.metLocation, m.level]))
 
 // Optionally write the synthetic save for UI testing: SAVE_OUT=/path/test.sav npx tsx …
 if (process.env.SAVE_OUT) {
   const { writeFileSync } = await import('node:fs')
   writeFileSync(process.env.SAVE_OUT, save)
+}
+
+// Cleaning up after a sync that read the old game: entries linked to the other game's PIDs are
+// re-matched when this game has the same family, and offered for removal otherwise.
+{
+  const { planSync } = await import('../../src/lib/saves/sync')
+  const ethan = games.find((g) => g.trainer === 'Ethan')!
+  const oldGame = games.find((g) => g.trainer === 'OLD')!
+  const run = { id: 1, defeatedBosses: [] } as never
+  const enc = (id: number, location: string, speciesId: number, pid: number) =>
+    ({ id, runId: 1, location, speciesId, pid, status: 'party', order: 0, createdAt: id }) as never
+  const plan = planSync(
+    ethan,
+    run,
+    [enc(1, 'New Bark Town', 155, 1), enc(2, 'Route 29', 4, 2)], // linked to OLD's Bulbasaur / Charmander PIDs
+    ['New Bark Town', 'Route 29', 'Route 4'],
+    [],
+    [oldGame],
+  )
+  assert.deepEqual(plan.wrongGame.map((e: { id: number }) => e.id), [2], 'Charmander only exists in the old game')
+  assert.ok(plan.updates.some((u) => u.encounter.id === 1 && u.mon.pid === 0xdeadbeef), 'Cyndaquil re-links to this game')
+  console.log('old-game cleanup: ok')
 }

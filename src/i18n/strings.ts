@@ -261,6 +261,11 @@ const en = {
   changeNickname: 'nickname: {to}',
   changeMoved: '→ {to}',
   linkedOnly: 'Linked to the save',
+  wrongGameTitle: 'From the old game',
+  wrongGameHint: 'These were imported from the other game in this file by mistake. Checked ones are removed from the run.',
+  pickSaveGame: 'This save file holds two different games (an old one is left over from a New Game). Which is this run?',
+  pickSaveGameOther: 'This save is from a different trainer than last time. Which game is this run?',
+  saveGameInfo: 'ID {tid} · {badges} badges · {count} Pokémon',
 }
 
 export type StringKey = keyof typeof en
@@ -513,6 +518,11 @@ const he: Record<StringKey, string> = {
   changeNickname: 'כינוי: {to}',
   changeMoved: '← {to}',
   linkedOnly: 'קושר לשמירה',
+  wrongGameTitle: 'מהמשחק הישן',
+  wrongGameHint: 'אלה יובאו בטעות מהמשחק השני שבקובץ. המסומנים יימחקו מהריצה.',
+  pickSaveGame: 'בקובץ השמירה יש שני משחקים שונים (נשאר משחק ישן מלפני New Game). איזה מהם הריצה הזאת?',
+  pickSaveGameOther: 'השמירה הזאת של מאמן אחר מאשר בפעם הקודמת. איזה משחק הוא הריצה הזאת?',
+  saveGameInfo: 'ID {tid} · {badges} תגים · {count} פוקימונים',
 }
 
 export const STRINGS = { en, he }

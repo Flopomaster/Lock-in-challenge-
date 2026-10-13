@@ -6,7 +6,7 @@ import { getSpecies } from '../data/pokedex'
 import { displayName, runLocations } from '../db/repository'
 import type { Encounter } from '../db/types'
 import { useRun } from '../lib/runContext'
-import { parseHgssSave, SaveError } from '../lib/saves/hgss'
+import { parseHgssSave, SaveError, type ParsedSave } from '../lib/saves/hgss'
 import { applySync, planSync, type NewCatch, type SyncPlan } from '../lib/saves/sync'
 import { useT } from '../lib/settings'
 import { spriteStyleForRun } from '../lib/sprites'
@@ -22,17 +22,32 @@ export default function SaveSync() {
   const [catches, setCatches] = useState(new Set<NewCatch>())
   const [missing, setMissing] = useState(new Set<Encounter>())
   const [busy, setBusy] = useState(false)
+  const [choices, setChoices] = useState<ParsedSave[]>()
+  const [games, setGames] = useState<ParsedSave[]>([])
+  const [wrongGame, setWrongGame] = useState(new Set<Encounter>())
+
+  function choose(save: ParsedSave, all = games) {
+    setChoices(undefined)
+    const others = all.filter((g) => g !== save)
+    const p = planSync(save, run, encounters, runLocations(run, data), data?.bosses ?? [], others)
+    setPlan({ ...p, party: save.party.length, box: save.boxes.length })
+    setCatches(new Set(p.newCatches.filter((c) => !c.taken)))
+    setMissing(new Set())
+    setWrongGame(new Set(p.wrongGame))
+  }
 
   async function onFile(file: File | undefined) {
     if (!file) return
     setError(undefined)
     setPlan(undefined)
+    setChoices(undefined)
     try {
-      const save = parseHgssSave(await file.arrayBuffer())
-      const p = planSync(save, run, encounters, runLocations(run, data), data?.bosses ?? [])
-      setPlan({ ...p, party: save.party.length, box: save.boxes.length })
-      setCatches(new Set(p.newCatches.filter((c) => !c.taken)))
-      setMissing(new Set())
+      const found = parseHgssSave(await file.arrayBuffer())
+      setGames(found)
+      const known = run.saveTrainer && found.find((g) => g.tid === run.saveTrainer!.tid && g.sid === run.saveTrainer!.sid)
+      if (known) choose(known, found)
+      else if (found.length === 1 && !run.saveTrainer) choose(found[0], found)
+      else setChoices(found)
     } catch (e) {
       setError(e instanceof SaveError && e.message === 'size' ? t('saveErrorSize') : t('saveErrorFormat'))
     }
@@ -41,7 +56,7 @@ export default function SaveSync() {
   async function apply() {
     if (!plan) return
     setBusy(true)
-    await applySync(run, plan, { newCatches: catches, missing })
+    await applySync(run, plan, { newCatches: catches, missing, wrongGame })
     setBusy(false)
     navigate('/')
   }
@@ -54,7 +69,8 @@ export default function SaveSync() {
   }
 
   const visibleUpdates = plan?.updates.filter((u) => u.changes.length) ?? []
-  const empty = plan && !plan.newCatches.length && !visibleUpdates.length && !plan.missing.length && !plan.newBadges.length
+  const empty =
+    plan && !plan.newCatches.length && !visibleUpdates.length && !plan.missing.length && !plan.newBadges.length && !plan.wrongGame.length
 
   return (
     <div className="animate-rise-in space-y-4">
@@ -76,6 +92,25 @@ export default function SaveSync() {
         />
         {error && <p className="text-sm font-semibold text-danger">{error}</p>}
       </div>
+
+      {choices && (
+        <section className="space-y-2.5">
+          <p className="rounded-xl bg-warn-bg px-3 py-2 text-sm text-warn">{run.saveTrainer ? t('pickSaveGameOther') : t('pickSaveGame')}</p>
+          {choices.map((g) => (
+            <button key={`${g.tid}-${g.sid}`} type="button" onClick={() => choose(g)} className="card w-full p-3 text-start transition active:scale-[0.99]">
+              <div className="font-bold">
+                <bdi>{g.trainer}</bdi>
+              </div>
+              <div className="text-xs text-text-dim">{t('saveGameInfo', { tid: String(g.tid).padStart(5, '0'), badges: g.badges.length, count: g.party.length + g.boxes.length })}</div>
+              <div className="mt-1 flex flex-wrap">
+                {g.party.map((m) => (
+                  <Sprite key={m.pid} id={m.speciesId} style={style} size={40} shiny={m.shiny} />
+                ))}
+              </div>
+            </button>
+          ))}
+        </section>
+      )}
 
       {plan && (
         <>
@@ -135,6 +170,23 @@ export default function SaveSync() {
                       </div>
                     </div>
                   </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {plan.wrongGame.length > 0 && (
+            <section className="card p-4">
+              <Label>{t('wrongGameTitle')}</Label>
+              <p className="-mt-1 mb-2 text-xs text-text-dim">{t('wrongGameHint')}</p>
+              <div className="divide-y divide-border">
+                {plan.wrongGame.map((e) => (
+                  <Row key={e.id} checked={wrongGame.has(e)} onToggle={() => toggle(wrongGame, e, setWrongGame)}>
+                    <Sprite id={e.speciesId} style={style} size={44} />
+                    <div className="min-w-0 flex-1 truncate font-semibold">
+                      <bdi>{displayName(e)}</bdi>
+                    </div>
+                  </Row>
                 ))}
               </div>
             </section>

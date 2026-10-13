@@ -18,6 +18,7 @@ const STORED_SIZE = 136
 const BOXES = 18
 const BOX_SLOTS = 30
 const BOX_STRIDE = 0x1000
+const FOOTER_SIZE = 0x10
 
 // Block order for each shuffle value (PokeCrypto.BlockPosition; 24 permutations + 8 repeats).
 const BLOCK_POSITION = [
@@ -41,10 +42,16 @@ export interface SaveMon {
   metLocation: string
   inParty: boolean
   fainted: boolean
+  /** Original trainer IDs (to tell which game a PC box copy belongs to). */
+  otTid: number
+  otSid: number
 }
 
 export interface ParsedSave {
   trainer: string
+  /** Trainer ID / secret ID — identify which game a save copy belongs to. */
+  tid: number
+  sid: number
   party: SaveMon[]
   boxes: SaveMon[]
   /** Gym leader names whose badge is owned. */
@@ -56,16 +63,26 @@ export class SaveError extends Error {}
 const u16 = (d: Uint8Array, o: number) => d[o] | (d[o + 1] << 8)
 const u32 = (d: Uint8Array, o: number) => (d[o] | (d[o + 1] << 8) | (d[o + 2] << 16) | (d[o + 3] << 24)) >>> 0
 
-/** Picks the newer of the two copies of a block by its footer save counters. */
-function activeBlock(data: Uint8Array, begin: number, length: number): number {
-  const footer = begin + length - 0x14
-  const counter = (o: number) => [u32(data, o), u32(data, o + 4)]
-  const [major1, minor1] = counter(footer)
-  const [major2, minor2] = counter(footer + PARTITION)
-  const newer = (a: number, b: number) => (a === 0xffffffff ? false : b === 0xffffffff ? true : a > b)
-  if (major1 !== major2) return newer(major1, major2) ? begin : begin + PARTITION
-  return minor2 > minor1 && minor2 !== 0xffffffff ? begin + PARTITION : begin
+/** CRC-16/CCITT as used by Gen 4 block footers (PKHeX Checksums.CRC16_CCITT). */
+function crc16(data: Uint8Array, start: number, end: number): number {
+  let top = 0xff
+  let bot = 0xff
+  for (let i = start; i < end; i++) {
+    let x = data[i] ^ top
+    x ^= x >> 4
+    top = (bot ^ (x >> 3) ^ (x << 4)) & 0xff
+    bot = (x ^ (x << 5)) & 0xff
+  }
+  return (top << 8) | bot
 }
+
+/** A block copy is usable when its stored checksum matches its contents. */
+const blockValid = (data: Uint8Array, begin: number, length: number) =>
+  crc16(data, begin, begin + length - FOOTER_SIZE) === u16(data, begin + length - 2)
+
+/** Save counters (major, minor) from a block's footer: higher = written later *within one game*. */
+const blockCounter = (data: Uint8Array, begin: number, length: number) =>
+  u32(data, begin + length - 0x14) * 2 ** 32 + u32(data, begin + length - 0x10)
 
 function cryptArray(data: Uint8Array, start: number, end: number, seed: number) {
   for (let i = start; i < end; i += 2) {
@@ -129,33 +146,12 @@ function readMon(raw: Uint8Array, tid: number, sid: number, inParty: boolean): S
     metLocation: (gen4.locations as Record<string, string>)[met] ?? `#${met}`,
     inParty,
     fainted: inParty && u16(d, 0x8e) === 0,
+    otTid: u16(d, 0x0c),
+    otSid: u16(d, 0x0e),
   }
 }
 
-export function parseHgssSave(file: ArrayBuffer): ParsedSave {
-  // Emulators may append a footer (e.g. DeSmuME); the save proper is the first 512 KB.
-  if (file.byteLength < SAVE_SIZE) throw new SaveError('size')
-  const data = new Uint8Array(file, 0, SAVE_SIZE)
-
-  // PKHeX's HGSS check: the general block's footer records its own size.
-  const sizeOk = (base: number) => u32(data, base + GENERAL_SIZE - 0xc) === GENERAL_SIZE
-  if (!sizeOk(PARTITION) && !sizeOk(0)) throw new SaveError('format')
-
-  const general = activeBlock(data, 0, GENERAL_SIZE)
-  const storage = activeBlock(data, STORAGE_START, STORAGE_SIZE)
-
-  const trainer = decodeString(data, general + TRAINER_OFFSET, 8)
-  const tid = u16(data, general + TRAINER_OFFSET + 0x10)
-  const sid = u16(data, general + TRAINER_OFFSET + 0x12)
-
-  const partyCount = Math.min(6, data[general + PARTY_OFFSET - 4])
-  const party: SaveMon[] = []
-  for (let i = 0; i < partyCount; i++) {
-    const at = general + PARTY_OFFSET + i * PARTY_SIZE
-    const mon = readMon(data.subarray(at, at + PARTY_SIZE), tid, sid, true)
-    if (mon) party.push(mon)
-  }
-
+function readBoxes(data: Uint8Array, storage: number, tid: number, sid: number): SaveMon[] {
   const boxes: SaveMon[] = []
   for (let b = 0; b < BOXES; b++) {
     for (let s = 0; s < BOX_SLOTS; s++) {
@@ -164,13 +160,57 @@ export function parseHgssSave(file: ArrayBuffer): ParsedSave {
       if (mon) boxes.push(mon)
     }
   }
+  return boxes
+}
 
-  const johto = data[general + TRAINER_OFFSET + 0x1a]
-  const kanto = data[general + TRAINER_OFFSET + 0x1f]
-  const badges = [
-    ...JOHTO_LEADERS.filter((_, i) => johto & (1 << i)),
-    ...KANTO_LEADERS.filter((_, i) => kanto & (1 << i)),
-  ]
+/**
+ * Returns the game(s) in the save, newest first. A DS save keeps two copies of every block, chosen
+ * by a save counter — but starting a New Game restarts that counter, so a copy of an *older* game
+ * can outrank the current one. Each valid copy is therefore read on its own, and copies from
+ * different trainers come back as separate candidates for the player (or a remembered ID) to pick.
+ */
+export function parseHgssSave(file: ArrayBuffer): ParsedSave[] {
+  // Emulators may append a footer (e.g. DeSmuME); the save proper is the first 512 KB.
+  if (file.byteLength < SAVE_SIZE) throw new SaveError('size')
+  const data = new Uint8Array(file, 0, SAVE_SIZE)
 
-  return { trainer, party, boxes, badges }
+  const generals = [0, PARTITION].filter(
+    (base) => u32(data, base + GENERAL_SIZE - 0xc) === GENERAL_SIZE && blockValid(data, base, GENERAL_SIZE),
+  )
+  if (!generals.length) throw new SaveError('format')
+  const storages = [STORAGE_START, STORAGE_START + PARTITION].filter((base) => blockValid(data, base, STORAGE_SIZE))
+
+  const candidates = generals.map((general) => {
+    const trainer = decodeString(data, general + TRAINER_OFFSET, 8)
+    const tid = u16(data, general + TRAINER_OFFSET + 0x10)
+    const sid = u16(data, general + TRAINER_OFFSET + 0x12)
+
+    const partyCount = Math.min(6, data[general + PARTY_OFFSET - 4])
+    const party: SaveMon[] = []
+    for (let i = 0; i < partyCount; i++) {
+      const at = general + PARTY_OFFSET + i * PARTY_SIZE
+      const mon = readMon(data.subarray(at, at + PARTY_SIZE), tid, sid, true)
+      if (mon) party.push(mon)
+    }
+
+    // The PC copy that belongs to this trainer: most Pokémon with their IDs, then the newest.
+    const ownCount = (mons: SaveMon[]) => mons.filter((m) => m.otTid === tid && m.otSid === sid).length
+    const boxOptions = storages
+      .map((base) => ({ base, boxes: readBoxes(data, base, tid, sid) }))
+      .sort((a, b) => ownCount(b.boxes) - ownCount(a.boxes) || blockCounter(data, b.base, STORAGE_SIZE) - blockCounter(data, a.base, STORAGE_SIZE))
+    const boxes = boxOptions[0]?.boxes ?? []
+
+    const johto = data[general + TRAINER_OFFSET + 0x1a]
+    const kanto = data[general + TRAINER_OFFSET + 0x1f]
+    const badges = [
+      ...JOHTO_LEADERS.filter((_, i) => johto & (1 << i)),
+      ...KANTO_LEADERS.filter((_, i) => kanto & (1 << i)),
+    ]
+    return { save: { trainer, tid, sid, party, boxes, badges }, counter: blockCounter(data, general, GENERAL_SIZE) }
+  })
+
+  // Two copies of the same game: keep the newer one.
+  candidates.sort((a, b) => b.counter - a.counter)
+  const unique = candidates.filter((c, i) => candidates.findIndex((o) => o.save.tid === c.save.tid && o.save.sid === c.save.sid) === i)
+  return unique.map((c) => c.save)
 }

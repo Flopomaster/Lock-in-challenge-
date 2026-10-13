@@ -30,15 +30,32 @@ export interface Update {
 
 export interface SyncPlan {
   trainer: string
+  saveTrainer: { tid: number; sid: number }
   newCatches: NewCatch[]
   updates: Update[]
   /** Tracked as alive but no longer in the save — released after dying? */
   missing: Encounter[]
+  /** Imported earlier from the *other* game in the file (an old save left over from a New Game). */
+  wrongGame: Encounter[]
   newBadges: Boss[]
   fainted: SaveMon[]
 }
 
-export function planSync(save: ParsedSave, run: Run, encounters: Encounter[], locations: string[], bosses: Boss[]): SyncPlan {
+export function planSync(
+  save: ParsedSave,
+  run: Run,
+  encounters: Encounter[],
+  locations: string[],
+  bosses: Boss[],
+  otherGames: ParsedSave[] = [],
+): SyncPlan {
+  const otherPids = new Set(otherGames.flatMap((g) => [...g.party, ...g.boxes]).map((m) => m.pid))
+  const ownPids = new Set([...save.party, ...save.boxes].map((m) => m.pid))
+  // Linked to the other game by an earlier sync: forget that link and match them afresh. Ones that
+  // match a Pokémon in this game are the player's own and get fixed; the rest are offered for removal.
+  const relinked = new Set(encounters.filter((e) => e.pid !== undefined && otherPids.has(e.pid) && !ownPids.has(e.pid)))
+  encounters = encounters.map((e) => (relinked.has(e) ? { ...e, pid: undefined } : e))
+
   const all = [...save.party, ...save.boxes]
   const unmatched = new Set(all)
   const matches = new Map<Encounter, SaveMon>()
@@ -95,19 +112,21 @@ export function planSync(save: ParsedSave, run: Run, encounters: Encounter[], lo
     return { mon, location, taken: catchTaken }
   })
 
-  const missing = encounters.filter((e) => (e.status === 'party' || e.status === 'box') && !matches.has(e))
+  const wrongGame = encounters.filter((e) => e.pid === undefined && !matches.has(e) && [...relinked].some((r) => r.id === e.id))
+  const missing = encounters.filter((e) => (e.status === 'party' || e.status === 'box') && !matches.has(e) && !wrongGame.includes(e))
 
   const defeated = new Set(run.defeatedBosses ?? [])
   const newBadges = bosses.filter(
     (b) => b.type === 'gym-leader' && !defeated.has(b.id) && save.badges.some((leader) => b.name.toLowerCase().includes(leader.toLowerCase())),
   )
 
-  return { trainer: save.trainer, newCatches, updates, missing, newBadges, fainted: save.party.filter((m) => m.fainted) }
+  return { trainer: save.trainer, wrongGame, saveTrainer: { tid: save.tid, sid: save.sid }, newCatches, updates, missing, newBadges, fainted: save.party.filter((m) => m.fainted) }
 }
 
 export interface SyncSelection {
   newCatches: Set<NewCatch>
   missing: Set<Encounter>
+  wrongGame: Set<Encounter>
 }
 
 export async function applySync(run: Run, plan: SyncPlan, selection: SyncSelection) {
@@ -152,11 +171,14 @@ export async function applySync(run: Run, plan: SyncPlan, selection: SyncSelecti
     })
   }
 
+  if (selection.wrongGame.size) await db.encounters.bulkDelete([...selection.wrongGame].map((e) => e.id!))
+
   for (const e of plan.missing) {
     if (selection.missing.has(e)) await db.encounters.update(e.id!, { status: 'dead', death: { at: now } })
   }
 
   await db.runs.update(run.id!, {
+    saveTrainer: plan.saveTrainer,
     defeatedBosses: [...new Set([...(run.defeatedBosses ?? []), ...plan.newBadges.map((b) => b.id)])],
     extraLocations: [...extraLocations],
   })

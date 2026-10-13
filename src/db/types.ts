@@ -41,6 +41,8 @@ export interface Run {
   customRules: string[]
   partnerName?: string
   partner?: SoulLinkPartner
+  /** The in-game trainer this run syncs from (set on the first save sync). */
+  saveTrainer?: { tid: number; sid: number }
   extraLocations: string[]
   /** Manual badge count, used only for games without boss data. */
   badges: number
