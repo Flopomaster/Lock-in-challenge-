@@ -8,6 +8,8 @@ export interface Species {
   chain: number
   stats: number[]
   abilities: string[]
+  /** Experience curve code (see lib/experience.ts). */
+  growth: string
   pastTypes?: { gen: number; types: string[] }[]
 }
 

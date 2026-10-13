@@ -1,0 +1,176 @@
+// HeartGold / SoulSilver (.sav) reader. Layout and crypto follow PKHeX (SAV4HGSS, PK4, PokeCrypto):
+// a 512 KB file with two partitions, each holding a "general" and a "storage" block; the newest
+// copy of each block wins. Pokémon are 136-byte PK4 structs (236 in the party), encrypted with a
+// checksum-seeded LCRNG and block-shuffled by their PID.
+import gen4 from '../../data/gen4.json'
+import { NATURES, getSpecies } from '../../data/pokedex'
+import { levelFromExp } from '../experience'
+
+const SAVE_SIZE = 0x80000
+const PARTITION = 0x40000
+const GENERAL_SIZE = 0xf628
+const STORAGE_START = 0xf700
+const STORAGE_SIZE = 0x12310
+const PARTY_OFFSET = 0x98
+const TRAINER_OFFSET = 0x64
+const PARTY_SIZE = 236
+const STORED_SIZE = 136
+const BOXES = 18
+const BOX_SLOTS = 30
+const BOX_STRIDE = 0x1000
+
+// Block order for each shuffle value (PokeCrypto.BlockPosition; 24 permutations + 8 repeats).
+const BLOCK_POSITION = [
+  0, 1, 2, 3, 0, 1, 3, 2, 0, 2, 1, 3, 0, 3, 1, 2, 0, 2, 3, 1, 0, 3, 2, 1, 1, 0, 2, 3, 1, 0, 3, 2, 2, 0, 1, 3, 3, 0, 1, 2, 2, 0, 3, 1, 3, 0, 2, 1, 1, 2, 0, 3,
+  1, 3, 0, 2, 2, 1, 0, 3, 3, 1, 0, 2, 2, 3, 0, 1, 3, 2, 0, 1, 1, 2, 3, 0, 1, 3, 2, 0, 2, 1, 3, 0, 3, 1, 2, 0, 2, 3, 1, 0, 3, 2, 1, 0, 0, 1, 2, 3, 0, 1, 3, 2,
+  0, 2, 1, 3, 0, 3, 1, 2, 0, 2, 3, 1, 0, 3, 2, 1, 1, 0, 2, 3, 1, 0, 3, 2,
+]
+
+const JOHTO_LEADERS = ['Falkner', 'Bugsy', 'Whitney', 'Morty', 'Chuck', 'Jasmine', 'Pryce', 'Clair']
+const KANTO_LEADERS = ['Brock', 'Misty', 'Surge', 'Erika', 'Janine', 'Sabrina', 'Blaine', 'Blue']
+
+export interface SaveMon {
+  pid: number
+  speciesId: number
+  nickname?: string
+  level: number
+  nature: string
+  ability?: string
+  gender?: 'm' | 'f'
+  shiny: boolean
+  metLocation: string
+  inParty: boolean
+  fainted: boolean
+}
+
+export interface ParsedSave {
+  trainer: string
+  party: SaveMon[]
+  boxes: SaveMon[]
+  /** Gym leader names whose badge is owned. */
+  badges: string[]
+}
+
+export class SaveError extends Error {}
+
+const u16 = (d: Uint8Array, o: number) => d[o] | (d[o + 1] << 8)
+const u32 = (d: Uint8Array, o: number) => (d[o] | (d[o + 1] << 8) | (d[o + 2] << 16) | (d[o + 3] << 24)) >>> 0
+
+/** Picks the newer of the two copies of a block by its footer save counters. */
+function activeBlock(data: Uint8Array, begin: number, length: number): number {
+  const footer = begin + length - 0x14
+  const counter = (o: number) => [u32(data, o), u32(data, o + 4)]
+  const [major1, minor1] = counter(footer)
+  const [major2, minor2] = counter(footer + PARTITION)
+  const newer = (a: number, b: number) => (a === 0xffffffff ? false : b === 0xffffffff ? true : a > b)
+  if (major1 !== major2) return newer(major1, major2) ? begin : begin + PARTITION
+  return minor2 > minor1 && minor2 !== 0xffffffff ? begin + PARTITION : begin
+}
+
+function cryptArray(data: Uint8Array, start: number, end: number, seed: number) {
+  for (let i = start; i < end; i += 2) {
+    seed = (Math.imul(0x41c64e6d, seed) + 0x6073) >>> 0
+    const xor = seed >>> 16
+    data[i] ^= xor & 0xff
+    data[i + 1] ^= xor >>> 8
+  }
+}
+
+/** Decrypts one PK4 (stored or party size). Returns null for empty / corrupt slots. */
+function decrypt(raw: Uint8Array): Uint8Array | null {
+  const data = raw.slice()
+  const pid = u32(data, 0)
+  const checksum = u16(data, 6)
+  if (pid === 0 && checksum === 0) return null
+  cryptArray(data, 8, STORED_SIZE, checksum)
+  if (data.length > STORED_SIZE) cryptArray(data, STORED_SIZE, data.length, pid)
+  const sv = (pid >>> 13) & 31
+  const blocks = [0, 1, 2, 3].map((b) => data.slice(8 + b * 32, 8 + (b + 1) * 32))
+  for (let i = 0; i < 4; i++) data.set(blocks[BLOCK_POSITION[sv * 4 + i]], 8 + i * 32)
+  let sum = 0
+  for (let i = 8; i < STORED_SIZE; i += 2) sum = (sum + u16(data, i)) & 0xffff
+  return sum === checksum ? data : null
+}
+
+function decodeString(data: Uint8Array, offset: number, maxChars: number): string {
+  let out = ''
+  for (let i = 0; i < maxChars; i++) {
+    const v = u16(data, offset + i * 2)
+    if (v === 0xffff || v === 0) break
+    const ch = gen4.chars[v - gen4.charStart]
+    out += ch && ch !== '\0' ? ch : '?'
+  }
+  return out
+}
+
+function readMon(raw: Uint8Array, tid: number, sid: number, inParty: boolean): SaveMon | null {
+  const d = decrypt(raw)
+  if (!d) return null
+  const speciesId = u16(d, 0x08)
+  const iv32 = u32(d, 0x38)
+  const isEgg = ((iv32 >>> 30) & 1) === 1
+  if (!speciesId || isEgg || !getSpecies(speciesId)) return null
+
+  const pid = u32(d, 0)
+  const genderBits = (d[0x40] >>> 1) & 3
+  const met = u16(d, 0x46) || u16(d, 0x80)
+  const shinyValue = (tid ^ sid ^ (pid >>> 16) ^ (pid & 0xffff)) >>> 0
+  const level = inParty && d.length > 0x8c && d[0x8c] ? d[0x8c] : levelFromExp(getSpecies(speciesId)!.growth, u32(d, 0x10))
+
+  return {
+    pid,
+    speciesId,
+    nickname: iv32 >>> 31 ? decodeString(d, 0x48, 11) : undefined,
+    level,
+    nature: NATURES[pid % 25],
+    ability: gen4.abilities[d[0x15]] || undefined,
+    gender: genderBits === 0 ? 'm' : genderBits === 1 ? 'f' : undefined,
+    shiny: shinyValue < 8,
+    metLocation: (gen4.locations as Record<string, string>)[met] ?? `#${met}`,
+    inParty,
+    fainted: inParty && u16(d, 0x8e) === 0,
+  }
+}
+
+export function parseHgssSave(file: ArrayBuffer): ParsedSave {
+  // Emulators may append a footer (e.g. DeSmuME); the save proper is the first 512 KB.
+  if (file.byteLength < SAVE_SIZE) throw new SaveError('size')
+  const data = new Uint8Array(file, 0, SAVE_SIZE)
+
+  // PKHeX's HGSS check: the general block's footer records its own size.
+  const sizeOk = (base: number) => u32(data, base + GENERAL_SIZE - 0xc) === GENERAL_SIZE
+  if (!sizeOk(PARTITION) && !sizeOk(0)) throw new SaveError('format')
+
+  const general = activeBlock(data, 0, GENERAL_SIZE)
+  const storage = activeBlock(data, STORAGE_START, STORAGE_SIZE)
+
+  const trainer = decodeString(data, general + TRAINER_OFFSET, 8)
+  const tid = u16(data, general + TRAINER_OFFSET + 0x10)
+  const sid = u16(data, general + TRAINER_OFFSET + 0x12)
+
+  const partyCount = Math.min(6, data[general + PARTY_OFFSET - 4])
+  const party: SaveMon[] = []
+  for (let i = 0; i < partyCount; i++) {
+    const at = general + PARTY_OFFSET + i * PARTY_SIZE
+    const mon = readMon(data.subarray(at, at + PARTY_SIZE), tid, sid, true)
+    if (mon) party.push(mon)
+  }
+
+  const boxes: SaveMon[] = []
+  for (let b = 0; b < BOXES; b++) {
+    for (let s = 0; s < BOX_SLOTS; s++) {
+      const at = storage + b * BOX_STRIDE + s * STORED_SIZE
+      const mon = readMon(data.subarray(at, at + STORED_SIZE), tid, sid, false)
+      if (mon) boxes.push(mon)
+    }
+  }
+
+  const johto = data[general + TRAINER_OFFSET + 0x1a]
+  const kanto = data[general + TRAINER_OFFSET + 0x1f]
+  const badges = [
+    ...JOHTO_LEADERS.filter((_, i) => johto & (1 << i)),
+    ...KANTO_LEADERS.filter((_, i) => kanto & (1 << i)),
+  ]
+
+  return { trainer, party, boxes, badges }
+}

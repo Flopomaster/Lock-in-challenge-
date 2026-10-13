@@ -143,6 +143,10 @@ def resolve(slug):
     return out
 
 
+# Misspelled place names in the source data.
+TYPOS = {'Vermillion City': 'Vermilion City', 'Fuschia City': 'Fuchsia City', 'Viridan Forest': 'Viridian Forest'}
+
+
 def parse_routes(path):
     locations, bosses = [], []
     for raw in open(path, encoding='utf-8'):
@@ -157,6 +161,7 @@ def parse_routes(path):
                            'after': len(locations)})
             continue
         name, _, mons = line.partition('|')
+        name = TYPOS.get(name.strip(), name)
         enc = []
         for m in mons.split(','):
             if m.strip():

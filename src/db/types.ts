@@ -78,6 +78,8 @@ export interface Encounter {
   notes?: string
   /** Sort key within the party / box. */
   order: number
+  /** The in-game Pokémon's PID, once matched by a save-file sync. */
+  pid?: number
   createdAt: number
   death?: Death
 }
