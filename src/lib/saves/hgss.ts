@@ -56,6 +56,8 @@ export interface ParsedSave {
   boxes: SaveMon[]
   /** Gym leader names whose badge is owned. */
   badges: string[]
+  /** PIDs found in a PC copy that belongs to another trainer (an older game left in the file). */
+  foreignPids: number[]
 }
 
 export class SaveError extends Error {}
@@ -193,12 +195,18 @@ export function parseHgssSave(file: ArrayBuffer): ParsedSave[] {
       if (mon) party.push(mon)
     }
 
-    // The PC copy that belongs to this trainer: most Pokémon with their IDs, then the newest.
+    // The PC copy that belongs to this trainer. HGSS only rewrites the PC block when boxes change,
+    // so after a New Game one copy can still hold the *previous* game's boxes — with a higher save
+    // counter. A copy with Pokémon but none caught by this trainer is that leftover: skip it.
     const ownCount = (mons: SaveMon[]) => mons.filter((m) => m.otTid === tid && m.otSid === sid).length
-    const boxOptions = storages
-      .map((base) => ({ base, boxes: readBoxes(data, base, tid, sid) }))
-      .sort((a, b) => ownCount(b.boxes) - ownCount(a.boxes) || blockCounter(data, b.base, STORAGE_SIZE) - blockCounter(data, a.base, STORAGE_SIZE))
-    const boxes = boxOptions[0]?.boxes ?? []
+    const boxOptions = storages.map((base) => ({ base, boxes: readBoxes(data, base, tid, sid) }))
+    const foreign = boxOptions.filter((o) => o.boxes.length > 0 && ownCount(o.boxes) === 0)
+    const boxes =
+      boxOptions
+        .filter((o) => !foreign.includes(o))
+        .sort((a, b) => ownCount(b.boxes) - ownCount(a.boxes) || blockCounter(data, b.base, STORAGE_SIZE) - blockCounter(data, a.base, STORAGE_SIZE))[0]
+        ?.boxes ?? []
+    const foreignPids = foreign.flatMap((o) => o.boxes.map((m) => m.pid))
 
     const johto = data[general + TRAINER_OFFSET + 0x1a]
     const kanto = data[general + TRAINER_OFFSET + 0x1f]
@@ -206,7 +214,7 @@ export function parseHgssSave(file: ArrayBuffer): ParsedSave[] {
       ...JOHTO_LEADERS.filter((_, i) => johto & (1 << i)),
       ...KANTO_LEADERS.filter((_, i) => kanto & (1 << i)),
     ]
-    return { save: { trainer, tid, sid, party, boxes, badges }, counter: blockCounter(data, general, GENERAL_SIZE) }
+    return { save: { trainer, tid, sid, party, boxes, badges, foreignPids }, counter: blockCounter(data, general, GENERAL_SIZE) }
   })
 
   // Two copies of the same game: keep the newer one.

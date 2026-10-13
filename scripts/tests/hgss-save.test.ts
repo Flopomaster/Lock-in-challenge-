@@ -194,3 +194,23 @@ if (process.env.SAVE_OUT) {
   assert.ok(plan.updates.some((u) => u.encounter.id === 1 && u.mon.pid === 0xdeadbeef), 'Cyndaquil re-links to this game')
   console.log('old-game cleanup: ok')
 }
+
+// New Game leftover in the PC only: both general copies are the new game, but one PC copy still
+// holds the previous game's boxes with a higher counter. Those must not be read as this game's.
+{
+  const backup = save
+  save = new Uint8Array(0x80000)
+  writeBlocks(0, 500, [], [{ pid: 77, species: 4, exp: 0, met: 177, ability: 66, gender: 0 }], 'OLD', 111, 222) // old game everywhere…
+  writeBlocks(0, 7, [{ pid: 9, species: 155, exp: 0, level: 9, met: 126, ability: 66, gender: 0 }], [], 'Ethan') // …then the new game's general on top
+  const g0 = save.slice(0, 0xf628)
+  writeBlocks(0x40000, 6, [{ pid: 9, species: 155, exp: 0, level: 5, met: 126, ability: 66, gender: 0 }], [], 'Ethan')
+  // partition 1's storage is still OLD's (counter 500); restore partition 1's general to Ethan's
+  save.set(g0, 0)
+  const found = parseHgssSave(save.buffer)
+  assert.equal(found.length, 1)
+  assert.equal(found[0].trainer, 'Ethan')
+  assert.deepEqual(found[0].boxes, [], "the old game's PC is not this game's")
+  assert.deepEqual(found[0].foreignPids, [77])
+  console.log('leftover PC copy: ok')
+  save = backup
+}

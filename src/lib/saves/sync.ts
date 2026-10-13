@@ -49,7 +49,7 @@ export function planSync(
   bosses: Boss[],
   otherGames: ParsedSave[] = [],
 ): SyncPlan {
-  const otherPids = new Set(otherGames.flatMap((g) => [...g.party, ...g.boxes]).map((m) => m.pid))
+  const otherPids = new Set([...otherGames.flatMap((g) => [...g.party, ...g.boxes]).map((m) => m.pid), ...save.foreignPids])
   const ownPids = new Set([...save.party, ...save.boxes].map((m) => m.pid))
   // Linked to the other game by an earlier sync: forget that link and match them afresh. Ones that
   // match a Pokémon in this game are the player's own and get fixed; the rest are offered for removal.
