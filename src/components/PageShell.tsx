@@ -8,7 +8,7 @@ export default function PageShell({ title, children, action }: { title: string; 
   const navigate = useNavigate()
   const { lang } = useSettings()
   return (
-    <div className="mx-auto flex max-w-2xl flex-col overflow-hidden" style={{ height: 'var(--app-vh)' }}>
+    <div className="fixed inset-0 mx-auto flex max-w-2xl flex-col overflow-hidden">
       <header
         className="flex shrink-0 items-center gap-2 border-b border-border bg-surface px-2 pb-2.5"
         style={{ paddingTop: 'calc(0.6rem + env(safe-area-inset-top, 0px))' }}

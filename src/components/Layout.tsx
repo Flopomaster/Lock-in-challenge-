@@ -1,7 +1,8 @@
+import { useEffect } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useGameData } from '../data/gameData'
 import { useCurrentRun, type CurrentRun } from '../db/hooks'
-import { runGameName } from '../db/repository'
+import { migrateStarterLocation, runGameName } from '../db/repository'
 import type { RunContext } from '../lib/runContext'
 import { useT } from '../lib/settings'
 import { spriteStyleForRun } from '../lib/sprites'
@@ -16,6 +17,10 @@ export default function Layout() {
   const data = useGameData(run && !run.customGame ? run.gameId : undefined)
   const loading = current.loading || data === undefined
 
+  useEffect(() => {
+    if (run && data) void migrateStarterLocation(current.encounters, data)
+  }, [run, data, current.encounters])
+
   const nav = [
     { to: '/', label: t('navHome'), Icon: IconHome, end: true },
     { to: '/routes', label: t('navRoutes'), Icon: IconMap },
@@ -25,7 +30,7 @@ export default function Layout() {
   ]
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col overflow-hidden" style={{ height: 'var(--app-vh)' }}>
+    <div className="fixed inset-0 mx-auto flex max-w-2xl flex-col overflow-hidden">
       <header
         className="flex shrink-0 items-center gap-2 border-b border-border bg-surface px-4 pb-2.5"
         style={{ paddingTop: 'calc(0.6rem + env(safe-area-inset-top, 0px))' }}

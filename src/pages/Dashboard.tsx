@@ -31,7 +31,7 @@ export default function Dashboard() {
   const maxBadges = runMaxBadges(run)
   const activeRules = RULES.filter((r) => run.rules[r.key])
 
-  const starter = starterType(encounters, style.gen)
+  const starter = starterType(encounters, style.gen, data)
   const gyms = data?.bosses.filter((b) => b.type === 'gym-leader') ?? []
   const next = nextBoss(run, data)
   const cap = next ? levelCap(next, starter) : undefined

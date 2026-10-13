@@ -35,6 +35,8 @@ export interface Boss {
 export interface GameData {
   locations: { n: string; e: number[] }[]
   bosses: Boss[]
+  /** The game's starter choices (species ids), used to read the player's starter type. */
+  starters: number[]
 }
 
 const FILES = import.meta.glob<GameData>('./games/*.json', { import: 'default' })

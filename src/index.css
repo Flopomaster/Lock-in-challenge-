@@ -43,8 +43,6 @@
   --danger-bg: rgba(214, 41, 62, 0.1);
   --grave: #8a8f9c;
   --shadow: 0 1px 2px rgba(20, 22, 35, 0.06), 0 4px 14px rgba(20, 22, 35, 0.05);
-  /* Overwritten in JS (index.html) with the real measured viewport height. */
-  --app-vh: 100dvh;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -97,6 +95,8 @@ html {
   /* Kill the pull-to-refresh / rubber-band bounce so scrolling feels native, not like a webpage. */
   overscroll-behavior-y: none;
   height: 100%;
+  /* The app frame is position: fixed; only its inner <main> scrolls, never the page itself. */
+  overflow: hidden;
 }
 
 body {

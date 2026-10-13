@@ -20,7 +20,7 @@ export default function Team() {
   const party = encounters.filter((e) => e.status === 'party').sort(byOrder)
   const box = encounters.filter((e) => e.status === 'box').sort(byOrder)
   const next = run.rules.levelCaps ? nextBoss(run, data) : undefined
-  const cap = next ? levelCap(next, starterType(encounters, style.gen)) : Infinity
+  const cap = next ? levelCap(next, starterType(encounters, style.gen, data)) : Infinity
 
   const grid = (list: Encounter[]) => (
     <div className="grid grid-cols-3 gap-2.5">

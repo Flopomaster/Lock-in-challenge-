@@ -20,6 +20,17 @@ export const runMaxBadges = (run: Run) => (run.customGame ? 8 : (getGame(run.gam
 
 export const displayName = (e: Encounter) => e.nickname || getSpecies(e.speciesId)?.name || '???'
 
+/**
+ * Older runs logged the starter at a "Starter" pseudo-location; move it to the place the
+ * starter is actually received (when that place is still free).
+ */
+export async function migrateStarterLocation(encounters: Encounter[], data: GameData) {
+  const old = encounters.find((e) => e.location === 'Starter')
+  const home = data.locations.find((l) => data.starters.length && data.starters.every((s) => l.e.includes(s)))?.n
+  if (!old || !home || encounters.some((e) => e.location === home)) return
+  await db.encounters.update(old.id!, { location: home })
+}
+
 export function toggleBossDefeated(run: Run, bossId: string) {
   const defeated = new Set(run.defeatedBosses ?? [])
   if (defeated.has(bossId)) defeated.delete(bossId)

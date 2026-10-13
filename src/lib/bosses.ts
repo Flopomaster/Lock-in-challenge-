@@ -12,14 +12,20 @@ export const BOSS_TYPE_LABELS: Record<BossType, StringKey> = {
   titan: 'bossTitan',
 }
 
-/** Bosses that set level caps: gyms, the league and (Scarlet/Violet) titans. */
-export const isMajorBoss = (b: Boss) => b.type === 'gym-leader' || b.type === 'elite-four' || b.type === 'titan'
+/** Bosses that set level caps: gyms and the league. */
+export const isMajorBoss = (b: Boss) => b.type === 'gym-leader' || b.type === 'elite-four'
+
+/** Bosses listed in the Bosses tab: gyms, the league and rivals. */
+export const isListedBoss = (b: Boss) => isMajorBoss(b) || b.type === 'rival'
 
 const STARTER_TYPES = ['grass', 'fire', 'water']
 
-/** The player's starter type (rival teams in the data are keyed by it). */
-export function starterType(encounters: Encounter[], gen: number): string | undefined {
-  const starter = encounters.find((e) => e.location === 'Starter' && e.speciesId)
+/** The player's starter type (rival teams in the data are keyed by it): the caught Pokémon from a starter's family. */
+export function starterType(encounters: Encounter[], gen: number, data: GameData | null): string | undefined {
+  const starterChains = new Set((data?.starters ?? []).map((id) => getSpecies(id)?.chain))
+  const starter = [...encounters]
+    .sort((a, b) => a.createdAt - b.createdAt)
+    .find((e) => e.status !== 'missed' && starterChains.has(getSpecies(e.speciesId)?.chain))
   const species = getSpecies(starter?.speciesId)
   if (!species) return undefined
   const base = evolutionFamily(species)[0]

@@ -24,7 +24,7 @@ export default function Sheet({ title, onClose, children, footer }: SheetProps) 
         role="dialog"
         aria-modal="true"
         className="animate-sheet-up flex w-full max-w-lg flex-col rounded-t-3xl bg-surface"
-        style={{ maxHeight: 'calc(var(--app-vh) - 2.5rem)' }}
+        style={{ maxHeight: 'calc(100dvh - 2.5rem)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">

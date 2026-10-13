@@ -59,6 +59,19 @@ GAMES = {
     'sacred-gold': ('sacredgold', 'sssg'),
 }
 
+# Where the starter is actually received. The data lists a separate "Starter" pseudo-location;
+# we fold its choices into this real place instead (inserting it first when the data lacks it).
+# Games not listed use their first location.
+STARTER_AT = {
+    'ruby-sapphire': 'Route 101', 'emerald': 'Route 101', 'emerald-kaizo': 'Route 101',
+    'run-and-bun': 'Route 101', 'inclement-emerald': 'Route 101', 'blazing-emerald': 'Route 101',
+    'diamond-pearl': 'Route 201', 'platinum': 'Route 201', 'renegade-platinum': 'Route 201', 'bdsp': 'Route 201',
+    'black-white': 'Nuvema Town', 'blaze-black': 'Nuvema Town',
+    'x-y': 'Aquacorde Town',
+    'sun-moon': 'Iki Town', 'usum': 'Iki Town',
+    'sword-shield': 'Postwick',
+}
+
 ctx = ssl.create_default_context(cafile=os.environ.get('SSL_CERT_FILE'))
 
 
@@ -203,6 +216,17 @@ for game, (rfile, lfile) in GAMES.items():
         print(f'skip {game}: no {rpath}')
         continue
     locations, route_bosses = parse_routes(rpath)
+    starters = []
+    if locations and locations[0]['n'] == 'Starter':
+        starters = locations.pop(0)['e']
+        for b in route_bosses:
+            b['after'] = max(0, b['after'] - 1)
+        home = STARTER_AT.get(game, locations[0]['n'] if locations else 'Starter')
+        target = next((l for l in locations if l['n'] == home), None)
+        if target is None:
+            target = {'n': home, 'e': []}
+            locations.insert(0, target)
+        target['e'] = starters + [e for e in target['e'] if e not in starters]
     leagues = parse_leagues(lpath) if os.path.exists(lpath) else {}
     bosses = []
     seen = set()
@@ -218,7 +242,7 @@ for game, (rfile, lfile) in GAMES.items():
             boss['double'] = True
         bosses.append(boss)
     with open(os.path.join(OUT, f'{game}.json'), 'w') as fh:
-        json.dump({'locations': locations, 'bosses': bosses}, fh, separators=(',', ':'), ensure_ascii=False)
+        json.dump({'locations': locations, 'bosses': bosses, 'starters': starters}, fh, separators=(',', ':'), ensure_ascii=False)
     print(f'{game}: {len(locations)} locations, {len(bosses)} bosses')
 
 if unknown:

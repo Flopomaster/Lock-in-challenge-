@@ -19,23 +19,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <title>Nuzlocke Tracker</title>
-    <script>
-      // Real, measured viewport height instead of trusting CSS dvh/svh support,
-      // which is inconsistent across mobile browsers/webviews and can leave
-      // the bottom nav sitting above a gap of empty space on short pages.
-      (function () {
-        function setAppHeight() {
-          var h = (window.visualViewport && window.visualViewport.height) || window.innerHeight
-          document.documentElement.style.setProperty('--app-vh', h + 'px')
-        }
-        setAppHeight()
-        window.addEventListener('resize', setAppHeight)
-        window.addEventListener('orientationchange', setAppHeight)
-        if (window.visualViewport) {
-          window.visualViewport.addEventListener('resize', setAppHeight)
-        }
-      })()
-    </script>
   </head>
   <body>
     <div id="root"></div>

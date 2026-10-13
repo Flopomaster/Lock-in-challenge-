@@ -15,7 +15,6 @@ export interface Game {
 }
 
 const KANTO = [
-  'Starter',
   'Pallet Town',
   'Route 1',
   'Viridian City',

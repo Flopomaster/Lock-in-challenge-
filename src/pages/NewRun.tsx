@@ -40,7 +40,7 @@ export default function NewRun() {
     const id = await createRun({
       name: name.trim() || `${gameName} ${t(VARIANT_LABELS[variant])}`,
       gameId,
-      customGame: isCustom ? { name: customName.trim(), gen: customGen, locations: ['Starter', ...lines(customLocations).filter((l) => l !== 'Starter')] } : undefined,
+      customGame: isCustom ? { name: customName.trim(), gen: customGen, locations: lines(customLocations) } : undefined,
       variant,
       rules,
       customRules: lines(customRules),
