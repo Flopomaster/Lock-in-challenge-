@@ -30,14 +30,6 @@ A mobile-first PWA for tracking Pokémon Nuzlocke runs. Works offline; all data 
 - Shareable team / Hall of Fame image
 - Catch celebration animation
 
-## Save-file sync (HeartGold / SoulSilver)
-
-Pick an exported `.sav` (e.g. Delta → long-press the game → Export Save File) and the app reads the party
-and PC boxes — species, nickname, level, nature, ability, gender, shiny, met location — plus badges, then
-proposes new catches (placed by met location), level / evolution / party-box updates, and asks about tracked
-Pokémon that are no longer in the save. The reader (`src/lib/saves/hgss.ts`) follows PKHeX's SAV4HGSS / PK4
-layout and crypto; `npm test` round-trips a synthetic save through it.
-
 ## Development
 
 ```sh
@@ -46,9 +38,6 @@ npm run dev
 ```
 
 Pokémon data (`src/data/pokedex.json`) is bundled from PokéAPI's static data mirror. Regenerate with `python3 scripts/build-pokedex.py`.
-
-Save import tables (`src/data/gen4.json`: character set, met-location names, ability ids) come from
-[PKHeX](https://github.com/kwsch/PKHeX) via `python3 scripts/build-gen4.py /path/to/PKHeX`.
 
 Route lists and boss teams (`src/data/games/*.json`) are converted from [domtronn/nuzlocke.data](https://github.com/domtronn/nuzlocke.data):
 

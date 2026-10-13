@@ -7,7 +7,6 @@ import Locations from './pages/Locations'
 import NewRun from './pages/NewRun'
 import Runs from './pages/Runs'
 import Settings from './pages/Settings'
-import SaveSync from './pages/SaveSync'
 import ShareImage from './pages/ShareImage'
 import SoulLink from './pages/SoulLink'
 import Stats from './pages/Stats'
@@ -26,7 +25,6 @@ export default function App() {
         <Route path="soul-link" element={<SoulLink />} />
         <Route path="wheel" element={<Wheel />} />
         <Route path="share" element={<ShareImage />} />
-        <Route path="sync" element={<SaveSync />} />
       </Route>
       <Route path="runs" element={<Runs />} />
       <Route path="runs/new" element={<NewRun />} />

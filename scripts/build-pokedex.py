@@ -15,8 +15,6 @@ MAX_ID = 1025
 GEN = {'generation-i': 1, 'generation-ii': 2, 'generation-iii': 3, 'generation-iv': 4,
        'generation-v': 5, 'generation-vi': 6, 'generation-vii': 7, 'generation-viii': 8,
        'generation-ix': 9}
-# Experience curve codes, used to derive levels from EXP when importing save files.
-GROWTH = {'slow-then-very-fast': 'e', 'fast': 'f', 'medium': 'm', 'medium-slow': 'p', 'slow': 's', 'fast-then-very-slow': 'l'}
 STATS = ['hp', 'attack', 'defense', 'special-attack', 'special-defense', 'speed']
 
 ctx = ssl.create_default_context(cafile=os.environ.get('SSL_CERT_FILE'))
@@ -48,7 +46,6 @@ def build(i):
         'chain': url_id(sp['evolution_chain']['url']),
         'stats': [next(s['base_stat'] for s in pk['stats'] if s['stat']['name'] == n) for n in STATS],
         'abilities': [a['ability']['name'] for a in sorted(pk['abilities'], key=lambda a: a['slot'])],
-        'growth': GROWTH[sp['growth_rate']['name']],
     }
     past = [{'gen': GEN[p['generation']['name']],
              'types': [t['type']['name'] for t in sorted(p['types'], key=lambda t: t['slot'])]}

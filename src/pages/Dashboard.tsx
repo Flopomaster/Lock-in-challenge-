@@ -12,7 +12,6 @@ import { displayName, runLocations, runMaxBadges, toggleBossDefeated, updateRun 
 import type { Encounter } from '../db/types'
 import { isDefeated, levelCap, nextBoss, starterType } from '../lib/bosses'
 import { RULES } from '../lib/rules'
-import { SAVE_SYNC_GAMES } from '../lib/saves/sync'
 import { useRun } from '../lib/runContext'
 import { useT } from '../lib/settings'
 import { spriteStyleForRun } from '../lib/sprites'
@@ -172,7 +171,6 @@ export default function Dashboard() {
       <section>
         <Label>{t('tools')}</Label>
         <div className="grid grid-cols-2 gap-2.5">
-          {SAVE_SYNC_GAMES.includes(run.gameId) && <Tool to="/sync" icon="📥" label={t('saveSync')} />}
           {run.variant === 'soullink' && <Tool to="/soul-link" icon="🔗" label={t('soulLink')} />}
           <Tool to="/wheel" icon="🎡" label={t('wheel')} />
           <Tool to="/share" icon="📸" label={t('shareImage')} />
