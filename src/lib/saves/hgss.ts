@@ -222,3 +222,41 @@ export function parseHgssSave(file: ArrayBuffer): ParsedSave[] {
   const unique = candidates.filter((c, i) => candidates.findIndex((o) => o.save.tid === c.save.tid && o.save.sid === c.save.sid) === i)
   return unique.map((c) => c.save)
 }
+
+/** A short, pasteable text report of every block copy in the file — for debugging saves remotely. */
+export function diagnoseHgssSave(file: ArrayBuffer): string {
+  const lines = [`size ${file.byteLength} (0x${file.byteLength.toString(16)})`]
+  if (file.byteLength < SAVE_SIZE) return lines.join('\n')
+  const data = new Uint8Array(file, 0, SAVE_SIZE)
+  const name = (id: number) => getSpecies(id)?.name ?? `#${id}`
+  for (const [i, base] of [0, PARTITION].entries()) {
+    const g = base
+    const tid = u16(data, g + TRAINER_OFFSET + 0x10)
+    const sid = u16(data, g + TRAINER_OFFSET + 0x12)
+    const partyCount = data[g + PARTY_OFFSET - 4]
+    const party: string[] = []
+    for (let p = 0; p < Math.min(6, partyCount); p++) {
+      const at = g + PARTY_OFFSET + p * PARTY_SIZE
+      const mon = readMon(data.subarray(at, at + PARTY_SIZE), tid, sid, true)
+      party.push(mon ? `${name(mon.speciesId)}${mon.level}@${mon.metLocation}` : 'x')
+    }
+    lines.push(
+      `G${i}: sizeOk=${u32(data, g + GENERAL_SIZE - 0xc) === GENERAL_SIZE} crc=${blockValid(data, g, GENERAL_SIZE)} ctr=${u32(data, g + GENERAL_SIZE - 0x14)}/${u32(data, g + GENERAL_SIZE - 0x10)} ` +
+        `tr=${decodeString(data, g + TRAINER_OFFSET, 8)} id=${tid}/${sid} badges=${data[g + TRAINER_OFFSET + 0x1a]}/${data[g + TRAINER_OFFSET + 0x1f]} n=${partyCount} [${party.join(', ')}]`,
+    )
+    const s = base + STORAGE_START
+    const boxes = readBoxes(data, s, tid, sid)
+    const owners = new Map<string, number>()
+    for (const m of boxes) owners.set(`${m.otTid}/${m.otSid}`, (owners.get(`${m.otTid}/${m.otSid}`) ?? 0) + 1)
+    lines.push(
+      `S${i}: crc=${blockValid(data, s, STORAGE_SIZE)} ctr=${u32(data, s + STORAGE_SIZE - 0x14)}/${u32(data, s + STORAGE_SIZE - 0x10)} mons=${boxes.length} ot={${[...owners].map(([k, v]) => `${k}:${v}`).join(' ')}} ` +
+        `[${boxes.slice(0, 8).map((m) => `${name(m.speciesId)}${m.level}`).join(', ')}]`,
+    )
+  }
+  try {
+    lines.push(`picked: ${parseHgssSave(file).map((g) => `${g.trainer} ${g.tid}/${g.sid} party=${g.party.length} box=${g.boxes.length} foreign=${g.foreignPids.length}`).join(' | ')}`)
+  } catch (e) {
+    lines.push(`parse error: ${(e as Error).message}`)
+  }
+  return lines.join('\n')
+}

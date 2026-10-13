@@ -6,7 +6,7 @@ import { getSpecies } from '../data/pokedex'
 import { displayName, runLocations } from '../db/repository'
 import type { Encounter } from '../db/types'
 import { useRun } from '../lib/runContext'
-import { parseHgssSave, SaveError, type ParsedSave } from '../lib/saves/hgss'
+import { diagnoseHgssSave, parseHgssSave, SaveError, type ParsedSave } from '../lib/saves/hgss'
 import { applySync, planSync, type NewCatch, type SyncPlan } from '../lib/saves/sync'
 import { useT } from '../lib/settings'
 import { spriteStyleForRun } from '../lib/sprites'
@@ -25,6 +25,8 @@ export default function SaveSync() {
   const [choices, setChoices] = useState<ParsedSave[]>()
   const [games, setGames] = useState<ParsedSave[]>([])
   const [wrongGame, setWrongGame] = useState(new Set<Encounter>())
+  const [report, setReport] = useState<string>()
+  const [copied, setCopied] = useState(false)
 
   function choose(save: ParsedSave, all = games) {
     setChoices(undefined)
@@ -41,8 +43,15 @@ export default function SaveSync() {
     setError(undefined)
     setPlan(undefined)
     setChoices(undefined)
+    setCopied(false)
+    const buffer = await file.arrayBuffer()
     try {
-      const found = parseHgssSave(await file.arrayBuffer())
+      setReport(diagnoseHgssSave(buffer))
+    } catch (e) {
+      setReport(`diagnose failed: ${(e as Error).message}`)
+    }
+    try {
+      const found = parseHgssSave(buffer)
       setGames(found)
       const known = run.saveTrainer && found.find((g) => g.tid === run.saveTrainer!.tid && g.sid === run.saveTrainer!.sid)
       if (known) choose(known, found)
@@ -92,6 +101,29 @@ export default function SaveSync() {
         />
         {error && <p className="text-sm font-semibold text-danger">{error}</p>}
       </div>
+
+      {report && (
+        <details className="card p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-text-dim">🔧 {t('diagnostics')}</summary>
+          <pre dir="ltr" className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-surface-hi p-2 text-[11px]">
+            {report}
+          </pre>
+          <Button
+            tone="soft"
+            className="mt-2 w-full"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(report)
+                setCopied(true)
+              } catch {
+                prompt('', report)
+              }
+            }}
+          >
+            {copied ? '✓' : t('copyReport')}
+          </Button>
+        </details>
+      )}
 
       {choices && (
         <section className="space-y-2.5">
