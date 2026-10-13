@@ -10,12 +10,16 @@ export default function Settings() {
   const { lang, theme, sound, playerName, currentRunId, update } = useSettings()
   const fileRef = useRef<HTMLInputElement>(null)
 
+  const modeRef = useRef<'add' | 'replace'>('add')
+
   async function onImport(file: File | undefined) {
-    if (!file || !confirm(t('importConfirm'))) return
+    const mode = modeRef.current
+    if (!file || (mode === 'replace' && !confirm(t('importConfirm')))) return
     try {
-      const result = await importBackup(file)
-      if (currentRunId && !(await db.runs.get(currentRunId))) update({ currentRunId: undefined })
-      alert(t('importDone', result))
+      const result = await importBackup(file, mode)
+      if (mode === 'add' && result.firstRunId) update({ currentRunId: result.firstRunId })
+      else if (currentRunId && !(await db.runs.get(currentRunId))) update({ currentRunId: undefined })
+      alert(t(mode === 'add' ? 'importAdded' : 'importDone', result))
     } catch {
       alert(t('importFailed'))
     }
@@ -71,11 +75,28 @@ export default function Settings() {
         <div className="card space-y-3 p-4">
           <Label>{t('backup')}</Label>
           <p className="text-sm text-text-dim">{t('backupDesc')}</p>
+          <Button className="w-full" onClick={exportBackup}>
+            {t('exportBackup')}
+          </Button>
           <div className="flex gap-2">
-            <Button className="flex-1" onClick={exportBackup}>
-              {t('exportBackup')}
+            <Button
+              tone="soft"
+              className="flex-1"
+              onClick={() => {
+                modeRef.current = 'add'
+                fileRef.current?.click()
+              }}
+            >
+              {t('addFromFile')}
             </Button>
-            <Button tone="soft" className="flex-1" onClick={() => fileRef.current?.click()}>
+            <Button
+              tone="soft"
+              className="flex-1"
+              onClick={() => {
+                modeRef.current = 'replace'
+                fileRef.current?.click()
+              }}
+            >
               {t('importBackup')}
             </Button>
           </div>
