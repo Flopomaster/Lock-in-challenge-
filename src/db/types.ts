@@ -76,8 +76,29 @@ export interface Encounter {
   gender?: 'm' | 'f'
   shiny?: boolean
   notes?: string
+  /** Up to four known moves (PokeAPI slugs). */
+  moves?: string[]
   /** Sort key within the party / box. */
   order: number
   createdAt: number
   death?: Death
+}
+
+/** A champion team, frozen at the moment it entered the Hall of Fame (kept even if the run is deleted). */
+export interface HallOfFameEntry {
+  id?: number
+  runId?: number
+  runName: string
+  gameId: string
+  gameName: string
+  variant: Variant
+  trainer?: string
+  partnerName?: string
+  enteredAt: number
+  /** How long the run took, from creation to victory. */
+  startedAt: number
+  team: { speciesId?: number; nickname?: string; level?: number; shiny?: boolean; location: string }[]
+  stats: { caught: number; deaths: number; badges: number }
+  /** The fallen, remembered alongside the champions. */
+  fallen: { speciesId?: number; nickname?: string }[]
 }

@@ -15,6 +15,12 @@ export function spriteStyleForRun(run: Run | undefined): SpriteStyle {
   return { folder: game?.sprites, gen: game?.gen ?? 9 }
 }
 
+/** Sprite style for a game id alone (Hall of Fame entries outlive their runs). */
+export function spriteStyleForGameId(gameId: string): SpriteStyle {
+  const game = getGame(gameId)
+  return { folder: game?.sprites, gen: game?.gen ?? 9 }
+}
+
 /**
  * Candidate URLs, best first: the game-accurate sprite when the species existed in that
  * generation, then the modern sprite as a fallback (e.g. Gen 1 has no shiny sprites).

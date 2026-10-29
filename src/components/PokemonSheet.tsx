@@ -5,6 +5,7 @@ import type { Encounter, Run } from '../db/types'
 import { useT } from '../lib/settings'
 import { spriteStyleForRun } from '../lib/sprites'
 import Sheet from './Sheet'
+import MovesEditor from './MovesEditor'
 import SpeciesPicker from './SpeciesPicker'
 import Sprite from './Sprite'
 import { Button, Label, Segmented, Toggle } from './ui'
@@ -137,6 +138,8 @@ export default function PokemonSheet({ run, encounter, partyCount, onClose, onDe
           />
         </div>
         <Toggle checked={!!draft.shiny} onChange={(v) => set({ shiny: v || undefined })} label={`✨ ${t('shiny')}`} />
+
+        <MovesEditor moves={draft.moves ?? []} gen={style.gen} onChange={(moves) => set({ moves: moves.length ? moves : undefined })} />
 
         <div>
           <Label>{t('notes')}</Label>

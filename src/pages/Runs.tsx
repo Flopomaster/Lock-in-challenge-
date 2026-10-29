@@ -27,6 +27,12 @@ export default function Runs() {
     navigate('/')
   }
 
+  // Winning a run inducts its team into the Hall of Fame, with the ceremony.
+  const induct = (id: number) => {
+    update({ currentRunId: id })
+    navigate('/induct')
+  }
+
   async function remove(run: Run) {
     if (!confirm(t('deleteRunConfirm', { name: run.name }))) return
     await deleteRun(run.id!)
@@ -41,6 +47,7 @@ export default function Runs() {
       current={run.id === currentRunId}
       onSelect={() => select(run.id!)}
       onDelete={() => remove(run)}
+      onWin={() => induct(run.id!)}
     />
   )
 
@@ -49,6 +56,9 @@ export default function Runs() {
       title={t('runs')}
       action={
         <>
+          <button type="button" onClick={() => navigate('/hall-of-fame')} className="rounded-full p-2 text-xl" aria-label={t('hallOfFame')}>
+            🏆
+          </button>
           <button type="button" onClick={() => navigate('/stats')} className="rounded-full p-2 text-xl" aria-label={t('stats')}>
             📊
           </button>
@@ -83,7 +93,16 @@ export default function Runs() {
   )
 }
 
-function RunCard({ run, encounters, current, onSelect, onDelete }: { run: Run; encounters: Encounter[]; current: boolean; onSelect: () => void; onDelete: () => void }) {
+interface RunCardProps {
+  run: Run
+  encounters: Encounter[]
+  current: boolean
+  onSelect: () => void
+  onDelete: () => void
+  onWin: () => void
+}
+
+function RunCard({ run, encounters, current, onSelect, onDelete, onWin }: RunCardProps) {
   const t = useT()
   const alive = encounters.filter((e) => e.status === 'party' || e.status === 'box').length
   const dead = encounters.filter((e) => e.status === 'dead').length
@@ -113,7 +132,7 @@ function RunCard({ run, encounters, current, onSelect, onDelete }: { run: Run; e
       <div className="flex border-t border-border text-sm">
         {run.status === 'active' ? (
           <>
-            <button type="button" className="flex-1 py-2 text-good" onClick={() => setStatus('won')}>
+            <button type="button" className="flex-1 py-2 text-good" onClick={onWin}>
               {t('markWon')}
             </button>
             <button type="button" className="flex-1 border-s border-border py-2 text-danger" onClick={() => setStatus('lost')}>

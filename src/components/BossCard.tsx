@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import type { Boss, BossMon } from '../data/gameData'
 import { toggleBossDefeated } from '../db/repository'
 import type { Run } from '../db/types'
@@ -25,6 +26,7 @@ export default function BossCard({ boss, run, starter, style, defaultOpen }: Pro
   const ace = team[team.length - 1]
   const done = isDefeated(run, boss)
   const dependsOnStarter = !starter && boss.team.some((m) => m.st)
+  const onPlanPage = useLocation().pathname.startsWith('/battle/')
 
   return (
     <div className={`card overflow-hidden ${done ? 'opacity-60' : ''}`}>
@@ -62,6 +64,11 @@ export default function BossCard({ boss, run, starter, style, defaultOpen }: Pro
 
       {open && (
         <div className="space-y-2 border-t border-border bg-surface-hi/50 p-3">
+          {!onPlanPage && (
+            <Link to={`/battle/${boss.id}`} className="flex items-center justify-center gap-1.5 rounded-xl bg-primary py-2 text-sm font-semibold text-primary-ink">
+              ⚔️ {t('battlePlan')}
+            </Link>
+          )}
           {dependsOnStarter && <p className="text-xs text-warn">{t('starterUnknown')}</p>}
           {team.map((m, i) => (
             <BossMonRow key={i} mon={m} style={style} showStarter={dependsOnStarter} />

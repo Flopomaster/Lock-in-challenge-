@@ -1,5 +1,5 @@
 import { db } from '../db/db'
-import type { Encounter, Run } from '../db/types'
+import type { Encounter, HallOfFameEntry, Run } from '../db/types'
 
 interface Backup {
   app: 'nuzlocke-tracker'
@@ -7,6 +7,7 @@ interface Backup {
   exportedAt: string
   runs: Run[]
   encounters: Encounter[]
+  hallOfFame?: HallOfFameEntry[]
 }
 
 export async function exportBackup() {
@@ -16,6 +17,7 @@ export async function exportBackup() {
     exportedAt: new Date().toISOString(),
     runs: await db.runs.toArray(),
     encounters: await db.encounters.toArray(),
+    hallOfFame: await db.hallOfFame.toArray(),
   }
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
@@ -36,12 +38,14 @@ export async function importBackup(file: File, mode: 'replace' | 'add'): Promise
     throw new Error('invalid backup')
   }
   let firstRunId: number | undefined
-  await db.transaction('rw', db.runs, db.encounters, async () => {
+  await db.transaction('rw', db.runs, db.encounters, db.hallOfFame, async () => {
     if (mode === 'replace') {
       await db.runs.clear()
       await db.encounters.clear()
+      await db.hallOfFame.clear()
       await db.runs.bulkAdd(data.runs)
       await db.encounters.bulkAdd(data.encounters)
+      await db.hallOfFame.bulkAdd(data.hallOfFame ?? [])
       firstRunId = data.runs[0]?.id
       return
     }
@@ -53,6 +57,9 @@ export async function importBackup(file: File, mode: 'replace' | 'add'): Promise
     }
     await db.encounters.bulkAdd(
       data.encounters.filter((e) => newIds.has(e.runId)).map(({ id: _id, ...e }) => ({ ...e, runId: newIds.get(e.runId)! }) as Encounter),
+    )
+    await db.hallOfFame.bulkAdd(
+      (data.hallOfFame ?? []).map(({ id: _id, ...h }) => ({ ...h, runId: newIds.get(h.runId) }) as HallOfFameEntry),
     )
   })
   return { runs: data.runs.length, mons: data.encounters.filter((e) => e.status !== 'missed').length, firstRunId }

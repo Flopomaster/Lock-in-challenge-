@@ -10,7 +10,8 @@ import { Label, Warning } from '../components/ui'
 import { byOrder } from '../db/hooks'
 import { displayName, runLocations, runMaxBadges, toggleBossDefeated, updateRun } from '../db/repository'
 import type { Encounter } from '../db/types'
-import { isDefeated, levelCap, nextBoss, starterType } from '../lib/bosses'
+import { uncovered } from '../lib/battle'
+import { bossMonName, bossTeam, isDefeated, levelCap, nextBoss, starterType } from '../lib/bosses'
 import { RULES } from '../lib/rules'
 import { useRun } from '../lib/runContext'
 import { useT } from '../lib/settings'
@@ -36,6 +37,7 @@ export default function Dashboard() {
   const next = nextBoss(run, data)
   const cap = next ? levelCap(next, starter) : undefined
   const overCap = cap ? party.filter((e) => (e.level ?? 0) > cap) : []
+  const gaps = next ? uncovered(bossTeam(next, starter), party, style.gen) : []
 
   const setBadges = (n: number) => updateRun(run.id!, { badges: Math.max(0, Math.min(maxBadges, n)) })
 
@@ -58,6 +60,11 @@ export default function Dashboard() {
         <section>
           <Label>{t('nextBoss')}</Label>
           <BossCard key={next.id} boss={next} run={run} starter={starter} style={style} />
+          {gaps.length > 0 && (
+            <div className="mt-2">
+              <Warning>{t('coverageWarn', { names: [...new Set(gaps.map(bossMonName))].join(', ') })}</Warning>
+            </div>
+          )}
           {run.rules.levelCaps &&
             overCap.map((e) => (
               <div key={e.id} className="mt-2">
@@ -66,7 +73,15 @@ export default function Dashboard() {
             ))}
         </section>
       )}
-      {data && data.bosses.length > 0 && !next && <div className="card p-4 text-center font-semibold text-good">🏆 {t('allBossesDefeated')}</div>}
+      {data && data.bosses.length > 0 && !next && run.status === 'active' && (
+        <Link
+          to="/induct"
+          className="hof-plaque block rounded-2xl bg-[linear-gradient(135deg,#2a2108,#120d02)] p-4 text-center shadow-[0_6px_24px_rgba(184,134,11,0.25)]"
+        >
+          <div className="text-sm text-white/70">{t('allBossesDefeated')}</div>
+          <div className="hof-gold mt-1 text-xl font-black">🏆 {t('enterHallOfFame')}</div>
+        </Link>
+      )}
 
       {gyms.length > 0 ? (
         <div className="card p-4">
@@ -175,6 +190,7 @@ export default function Dashboard() {
           <Tool to="/wheel" icon="🎡" label={t('wheel')} />
           <Tool to="/share" icon="📸" label={t('shareImage')} />
           <Tool to="/stats" icon="📊" label={t('stats')} />
+          <Tool to="/hall-of-fame" icon="🏆" label={t('hallOfFame')} />
         </div>
       </section>
 

@@ -30,6 +30,12 @@ A mobile-first PWA for tracking Pokémon Nuzlocke runs. Works offline; all data 
 - Shareable team / Hall of Fame image
 - Catch celebration animation
 
+## Features (stage 4)
+
+- Battle plan per boss: for each of its Pokémon, your best answers ranked by your strongest hit, its most dangerous move against you, and level
+- Four moves per Pokémon (generation-filtered, from PokéAPI) and a dashboard warning when nobody hits the next boss super-effectively
+- Hall of Fame: winning a run freezes the champion team in a permanent gallery, inducted with a full ceremony (fanfare, spotlight per champion, the fallen remembered)
+
 ## Development
 
 ```sh
@@ -38,6 +44,8 @@ npm run dev
 ```
 
 Pokémon data (`src/data/pokedex.json`) is bundled from PokéAPI's static data mirror. Regenerate with `python3 scripts/build-pokedex.py`.
+
+Move data (`src/data/moves.json`) comes from PokéAPI too: `python3 scripts/build-moves.py`.
 
 Route lists and boss teams (`src/data/games/*.json`) are converted from [domtronn/nuzlocke.data](https://github.com/domtronn/nuzlocke.data):
 
