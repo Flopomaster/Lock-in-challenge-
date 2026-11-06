@@ -11,6 +11,7 @@ Pokémon names in that data are PokeAPI slugs (incl. regional forms such as
 import json
 import os
 import re
+import subprocess
 import ssl
 import sys
 import urllib.request
@@ -144,7 +145,53 @@ def resolve(slug):
 
 
 # Misspelled place names in the source data.
-TYPOS = {'Vermillion City': 'Vermilion City', 'Fuschia City': 'Fuchsia City', 'Viridan Forest': 'Viridian Forest'}
+TYPOS = {'Vermillion City': 'Vermilion City', 'Fuschia City': 'Fuchsia City', 'Viridan Forest': 'Viridian Forest', 'Routes 219': 'Route 219'}
+
+# Places the route data lacks (mostly post-game), filled from PokeAPI's per-version encounter tables.
+# `after`: where a place goes in the game's order; `postgame`: appended after `league`, in this order.
+SINNOH_SUPPLEMENT = {
+    'region': 4,
+    'skip': {'Ruin Maniac Cave', 'Maniac Tunnel', 'Hall of Origin', 'Flower Paradise', 'Newmoon Island', 'Roaming Sinnoh', 'sinnoh-pokemart'},
+    'after': {'Lake Valor': 'Valor Lakefront', 'Snowpoint City': 'Lake Acuity', 'Spear Pillar': 'Snowpoint Temple', 'Distortion World': 'Spear Pillar'},
+    'league': 'Pokémon League',
+    'postgame': ['Route 224', 'Route 225', 'Route 226', 'Route 227', 'Stark Mountain', 'Route 228', 'Route 229', 'Route 230',
+                 'Resort Area', 'Turnback Cave', 'Sendoff Spring', 'Trophy Garden'],
+}
+SUPPLEMENTS = {
+    'platinum': {**SINNOH_SUPPLEMENT, 'versions': ['platinum']},
+    'diamond-pearl': {**SINNOH_SUPPLEMENT, 'versions': ['diamond', 'pearl']},
+}
+
+
+def supplement(game, locations):
+    cfg = SUPPLEMENTS.get(game)
+    if not cfg:
+        return
+    cache = os.path.join(os.path.dirname(CACHE), f'locations-{game}.json')
+    if not os.path.exists(cache):
+        script = os.path.join(os.path.dirname(__file__), 'pokeapi-locations.py')
+        out = subprocess.run([sys.executable, script, str(cfg['region']), *cfg['versions']], check=True, capture_output=True, text=True).stdout
+        open(cache, 'w').write(out)
+    norm = lambda n: re.sub(r'^the', '', re.sub(r'[^a-z0-9]', '', n.lower().replace('sea route', 'route')))
+    have = {norm(l['n']) for l in locations}
+    missing = []
+    for found in json.load(open(cache)):
+        name = re.sub(r'^Sea Route', 'Route', found['n'])
+        if found['n'] in cfg['skip'] or found['slug'] in cfg['skip'] or norm(name) in have:
+            continue
+        missing.append({'n': name, 'e': found['e']})
+    by_name = {m['n']: m for m in missing}
+    for name, anchor in cfg['after'].items():
+        if name in by_name:
+            idx = next((i for i, l in enumerate(locations) if l['n'] == anchor), len(locations) - 1)
+            locations.insert(idx + 1, by_name.pop(name))
+    idx = next((i for i, l in enumerate(locations) if l['n'] == cfg['league']), len(locations) - 1)
+    for name in cfg['postgame']:
+        if name in by_name:
+            idx += 1
+            locations.insert(idx, by_name.pop(name))
+    locations.extend(by_name.values())  # anything else, at the end
+
 
 
 def parse_routes(path):
@@ -221,6 +268,7 @@ for game, (rfile, lfile) in GAMES.items():
         print(f'skip {game}: no {rpath}')
         continue
     locations, route_bosses = parse_routes(rpath)
+    supplement(game, locations)
     starters = []
     if locations and locations[0]['n'] == 'Starter':
         starters = locations.pop(0)['e']
