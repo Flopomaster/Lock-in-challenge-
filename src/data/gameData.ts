@@ -18,7 +18,7 @@ export interface BossMon {
   tt?: string
 }
 
-export type BossType = 'gym-leader' | 'elite-four' | 'rival' | 'evil-team' | 'mini-boss' | 'titan'
+export type BossType = 'gym-leader' | 'elite-four' | 'rival' | 'evil-team' | 'mini-boss' | 'titan' | 'final'
 
 export interface Boss {
   id: string

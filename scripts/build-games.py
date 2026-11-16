@@ -163,6 +163,17 @@ SUPPLEMENTS = {
 }
 
 
+# Per-game corrections to boss names / categories: {game: {name in data: (fixed name, type or None)}}.
+# The story's final boss gets the 'final' type so it's listed and sets a level cap; in Black/White N plays
+# the rival's part, so all his fights are listed too.
+BOSS_FIXES = {
+    'black-white': {'Ghestsis': ('Ghetsis', 'final'), 'N': ('N', 'rival')},
+    'blaze-black': {'Ghestsis': ('Ghetsis', 'final'), 'N': ('N', 'rival')},
+    'black2-white2': {'Ghetsis': ('Ghetsis', 'final')},
+    'blaze-black-2': {'Ghetsis': ('Ghetsis', 'final')},
+}
+
+
 def supplement(game, locations):
     cfg = SUPPLEMENTS.get(game)
     if not cfg:
@@ -288,7 +299,8 @@ for game, (rfile, lfile) in GAMES.items():
         if not league or not league['team'] or b['id'] in seen:
             continue
         seen.add(b['id'])
-        boss = {'id': b['id'], 'name': league['name'], 'type': b['type'], 'loc': b['loc'], 'after': b['after'], 'team': league['team']}
+        name, btype = BOSS_FIXES.get(game, {}).get(league['name'], (league['name'], None))
+        boss = {'id': b['id'], 'name': name, 'type': btype or b['type'], 'loc': b['loc'], 'after': b['after'], 'team': league['team']}
         if league['spec']:
             boss['spec'] = league['spec']
         if league.get('double'):
