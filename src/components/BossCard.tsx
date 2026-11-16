@@ -82,7 +82,7 @@ export default function BossCard({ boss, run, starter, style, defaultOpen }: Pro
 function BossMonRow({ mon, style, showStarter }: { mon: BossMon; style: SpriteStyle; showStarter: boolean }) {
   const t = useT()
   const types = bossMonTypes(mon, style.gen)
-  const weak = types.length ? weaknesses(types, style.gen) : []
+  const weak = types.length ? weaknesses(types, style.gen, mon.a) : []
   return (
     <div className="rounded-xl bg-surface p-2.5">
       <div className="flex items-center gap-2.5">

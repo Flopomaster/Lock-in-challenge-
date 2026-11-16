@@ -46,14 +46,42 @@ export function effectiveness(attack: string, defend: string, gen: number): numb
   return CHART[attack]?.[defend] ?? 1
 }
 
-export function multiplier(attack: string, defenders: string[], gen: number): number {
-  return defenders.reduce((m, d) => m * effectiveness(attack, d, gen), 1)
+// Defensive abilities that change how hard a type hits (immunities and halving), keyed by PokeAPI slug.
+// `since`: the generation the effect started (Lightning Rod / Storm Drain only absorb from Gen 5).
+const ABILITY_EFFECTS: Record<string, { type: string; x: number; since?: number }[]> = {
+  levitate: [{ type: 'ground', x: 0 }],
+  'flash-fire': [{ type: 'fire', x: 0 }],
+  'volt-absorb': [{ type: 'electric', x: 0 }],
+  'motor-drive': [{ type: 'electric', x: 0 }],
+  'lightning-rod': [{ type: 'electric', x: 0, since: 5 }],
+  'water-absorb': [{ type: 'water', x: 0 }],
+  'storm-drain': [{ type: 'water', x: 0, since: 5 }],
+  'dry-skin': [{ type: 'water', x: 0 }],
+  'sap-sipper': [{ type: 'grass', x: 0 }],
+  'earth-eater': [{ type: 'ground', x: 0 }],
+  'well-baked-body': [{ type: 'fire', x: 0 }],
+  'thick-fat': [{ type: 'fire', x: 0.5 }, { type: 'ice', x: 0.5 }],
+  heatproof: [{ type: 'fire', x: 0.5 }],
+  'water-bubble': [{ type: 'fire', x: 0.5 }],
+  'purifying-salt': [{ type: 'ghost', x: 0.5 }],
 }
 
-/** Attacking types that hit this type combination super-effectively. */
-export function weaknesses(defenders: string[], gen: number): { type: string; x: number }[] {
+/**
+ * Damage multiplier of an attacking type against a defender's types, as of that generation,
+ * including the defender's ability when known (Levitate → immune to Ground, etc.).
+ */
+export function multiplier(attack: string, defenders: string[], gen: number, ability?: string): number {
+  const base = defenders.reduce((m, d) => m * effectiveness(attack, d, gen), 1)
+  if (!ability) return base
+  if (ability === 'wonder-guard') return base > 1 ? base : 0
+  const effect = ABILITY_EFFECTS[ability]?.find((e) => e.type === attack && gen >= (e.since ?? 1))
+  return effect ? base * effect.x : base
+}
+
+/** Attacking types that hit this type combination (and ability) super-effectively. */
+export function weaknesses(defenders: string[], gen: number, ability?: string): { type: string; x: number }[] {
   return typesForGen(gen)
-    .map((type) => ({ type, x: multiplier(type, defenders, gen) }))
+    .map((type) => ({ type, x: multiplier(type, defenders, gen, ability) }))
     .filter((w) => w.x > 1)
     .sort((a, b) => b.x - a.x)
 }

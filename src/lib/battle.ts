@@ -32,28 +32,50 @@ export interface Answer {
 
 const log2 = (x: number) => (x === 0 ? -3 : Math.log2(x))
 
+/**
+ * Our Pokémon's ability for matchups: the one logged, else the species' only ability. (With more
+ * than one possible ability we can't know which it has, so none is assumed.)
+ */
+export function encounterAbility(e: Encounter): string | undefined {
+  if (e.ability) return e.ability
+  const abilities = getSpecies(e.speciesId)?.abilities ?? []
+  return abilities.length === 1 ? abilities[0] : undefined
+}
+
 /** Best way for `attackerTypes` (with optional known moves) to hit `defenderTypes`. */
-export function bestOffense(attackerTypes: string[], moves: string[] | undefined, defenderTypes: string[], gen: number): Offense {
+export function bestOffense(
+  attackerTypes: string[],
+  moves: string[] | undefined,
+  defenderTypes: string[],
+  gen: number,
+  defenderAbility?: string,
+): Offense {
   const known = (moves ?? []).map(getMove).filter(isDamaging)
   if (known.length) {
     const scored = known.map((m) => {
-      const x = multiplier(m.t, defenderTypes, gen)
+      const x = multiplier(m.t, defenderTypes, gen, defenderAbility)
       const stab = attackerTypes.includes(m.t) ? 1.5 : 1
       return { x, move: m.n, type: m.t, value: x * stab * (m.p ?? 60) }
     })
     const best = scored.sort((a, b) => b.value - a.value)[0]
     return { x: best.x, move: best.move, type: best.type }
   }
-  const byType = attackerTypes.map((t) => ({ x: multiplier(t, defenderTypes, gen), type: t })).sort((a, b) => b.x - a.x)
+  const byType = attackerTypes.map((t) => ({ x: multiplier(t, defenderTypes, gen, defenderAbility), type: t })).sort((a, b) => b.x - a.x)
   return byType[0] ?? { x: 1, type: 'normal' }
 }
 
 /** The opponent's most dangerous hit on `defenderTypes`, from its known moves or else its types. */
-export function worstDefense(opponentTypes: string[], opponentMoves: string[] | undefined, defenderTypes: string[], gen: number): Defense {
+export function worstDefense(
+  opponentTypes: string[],
+  opponentMoves: string[] | undefined,
+  defenderTypes: string[],
+  gen: number,
+  defenderAbility?: string,
+): Defense {
   const known = (opponentMoves ?? []).map(getMove).filter(isDamaging)
   const options = known.length
-    ? known.map((m) => ({ x: multiplier(m.t, defenderTypes, gen), move: m.n, type: m.t }))
-    : opponentTypes.map((t) => ({ x: multiplier(t, defenderTypes, gen), type: t }))
+    ? known.map((m) => ({ x: multiplier(m.t, defenderTypes, gen, defenderAbility), move: m.n, type: m.t }))
+    : opponentTypes.map((t) => ({ x: multiplier(t, defenderTypes, gen, defenderAbility), type: t }))
   return options.sort((a, b) => b.x - a.x)[0] ?? { x: 1 }
 }
 
@@ -64,8 +86,8 @@ export function rankAnswers(boss: BossMon, ours: Encounter[], gen: number): Answ
     .map((e) => {
       const species = getSpecies(e.speciesId)
       const types = species ? typesInGen(species, gen) : []
-      const offense = bestOffense(types, e.moves, bossTypes, gen)
-      const defense = worstDefense(bossTypes, boss.m, types, gen)
+      const offense = bestOffense(types, e.moves, bossTypes, gen, boss.a)
+      const defense = worstDefense(bossTypes, boss.m, types, gen, encounterAbility(e))
       const levelGap = (e.level ?? boss.l) - boss.l
       const score = log2(offense.x) * 1.2 - log2(defense.x) + Math.max(-2, Math.min(2, levelGap / 5))
       return { encounter: e, offense, defense, levelGap, score }
@@ -78,6 +100,6 @@ export function uncovered(team: BossMon[], ours: Encounter[], gen: number): Boss
   if (!ours.some((e) => e.moves?.length)) return []
   return team.filter((boss) => {
     const bossTypes = bossMonTypes(boss, gen)
-    return !ours.some((e) => (e.moves ?? []).map(getMove).filter(isDamaging).some((m) => multiplier(m.t, bossTypes, gen) > 1))
+    return !ours.some((e) => (e.moves ?? []).map(getMove).filter(isDamaging).some((m) => multiplier(m.t, bossTypes, gen, boss.a) > 1))
   })
 }

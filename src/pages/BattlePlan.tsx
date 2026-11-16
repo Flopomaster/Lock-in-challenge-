@@ -10,7 +10,7 @@ import { getSpecies, typesInGen } from '../data/pokedex'
 import { byOrder } from '../db/hooks'
 import { displayName } from '../db/repository'
 import type { Encounter } from '../db/types'
-import { rankAnswers, type Answer } from '../lib/battle'
+import { encounterAbility, rankAnswers, type Answer } from '../lib/battle'
 import { bossMonName, bossMonTypes, bossTeam, prettySlug, starterType } from '../lib/bosses'
 import { useRun } from '../lib/runContext'
 import { useT } from '../lib/settings'
@@ -59,7 +59,7 @@ function Matchup({ mon, ours, style }: { mon: BossMon; ours: Encounter[]; style:
       const m = getMove(slug)
       return isDamaging(m) && ours.some((e) => {
         const s = getSpecies(e.speciesId)
-        return s && multiplier(m.t, typesInGen(s, style.gen), style.gen) > 1
+        return s && multiplier(m.t, typesInGen(s, style.gen), style.gen, encounterAbility(e)) > 1
       })
     }),
   )

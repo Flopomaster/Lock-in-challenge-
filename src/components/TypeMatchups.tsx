@@ -1,20 +1,24 @@
 import { getSpecies, typesInGen } from '../data/pokedex'
 import type { Encounter } from '../db/types'
 import { useT } from '../lib/settings'
+import { encounterAbility } from '../lib/battle'
 import { multiplier, typesForGen } from '../lib/typeChart'
 import { Label, TypeBadge } from './ui'
 
 /** For each attacking type: how many party members are weak to it vs. resist/immune. */
 export default function TypeMatchups({ party, gen }: { party: Encounter[]; gen: number }) {
   const t = useT()
-  const partyTypes = party.map((e) => getSpecies(e.speciesId)).filter((s) => !!s).map((s) => typesInGen(s, gen))
-  if (!partyTypes.length) return null
+  const members = party.flatMap((e) => {
+    const s = getSpecies(e.speciesId)
+    return s ? [{ types: typesInGen(s, gen), ability: encounterAbility(e) }] : []
+  })
+  if (!members.length) return null
 
   const rows = typesForGen(gen).map((type) => {
-    const xs = partyTypes.map((types) => multiplier(type, types, gen))
+    const xs = members.map((m) => multiplier(type, m.types, gen, m.ability))
     return { type, weak: xs.filter((x) => x > 1).length, resist: xs.filter((x) => x < 1).length }
   })
-  const max = partyTypes.length
+  const max = members.length
 
   return (
     <section className="card p-4">
