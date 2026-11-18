@@ -145,57 +145,147 @@ def resolve(slug):
 
 
 # Misspelled place names in the source data.
-TYPOS = {'Vermillion City': 'Vermilion City', 'Fuschia City': 'Fuchsia City', 'Viridan Forest': 'Viridian Forest', 'Routes 219': 'Route 219'}
+TYPOS = {'Vermillion City': 'Vermilion City', 'Fuschia City': 'Fuchsia City', 'Viridan Forest': 'Viridian Forest', 'Routes 219': 'Route 219',
+         'Five Isalnd': 'Five Island', 'Six Isalnd': 'Six Island', 'Seven Isalnd': 'Seven Island'}
 
-# Places the route data lacks (mostly post-game), filled from PokeAPI's per-version encounter tables.
-# `after`: where a place goes in the game's order; `postgame`: appended after `league`, in this order.
+# Places the route data lacks, filled from PokeAPI's per-version encounter tables (scripts/pokeapi-locations.py).
+# Each game lists its PokeAPI `sources` (region id, versions) and either:
+#   `add`: exactly these places, as {PokeAPI name: (display name, place it after)} — anchor None = at the end;
+#   or (Sinnoh) every missing place except `skip`, placed by `after` / `postgame` (after `league`).
+# Places checked by hand: event-only areas (Faraway Island, Navel Rock, ...) and internal entries are left out.
 SINNOH_SUPPLEMENT = {
-    'region': 4,
     'skip': {'Ruin Maniac Cave', 'Maniac Tunnel', 'Hall of Origin', 'Flower Paradise', 'Newmoon Island', 'Roaming Sinnoh', 'sinnoh-pokemart'},
     'after': {'Lake Valor': 'Valor Lakefront', 'Snowpoint City': 'Lake Acuity', 'Spear Pillar': 'Snowpoint Temple', 'Distortion World': 'Spear Pillar'},
     'league': 'Pokémon League',
     'postgame': ['Route 224', 'Route 225', 'Route 226', 'Route 227', 'Stark Mountain', 'Route 228', 'Route 229', 'Route 230',
                  'Resort Area', 'Turnback Cave', 'Sendoff Spring', 'Trophy Garden'],
 }
+HOENN_REGIS = {'Island Cave': ('Island Cave', None), 'Desert Ruins': ('Desert Ruins', None), 'Ancient Tomb': ('Ancient Tomb', None)}
+SEVII = {
+    'Treasure Beach': ('Treasure Beach', 'One Island'), 'Kindle Road': ('Kindle Road', 'Treasure Beach'), 'Mt. Ember': ('Mt. Ember', 'Kindle Road'),
+    'Cape Brink': ('Cape Brink', 'Two Island'),
+    'Bond Bridge': ('Bond Bridge', 'Three Island'), 'Three Isle Port': ('Three Isle Port', 'Bond Bridge'), 'Berry Forest': ('Berry Forest', 'Three Isle Port'),
+    'Icefall Cave': ('Icefall Cave', 'Four Island'),
+    'Five Island': ('Five Island', 'Icefall Cave'), 'Five Isle Meadow': ('Five Isle Meadow', 'Five Island'), 'Memorial Pillar': ('Memorial Pillar', 'Five Isle Meadow'),
+    'Water Labyrinth': ('Water Labyrinth', 'Memorial Pillar'), 'Resort Gorgeous': ('Resort Gorgeous', 'Water Labyrinth'), 'Lost Cave': ('Lost Cave', 'Resort Gorgeous'),
+    'Water Path': ('Water Path', 'Six Island'), 'Ruin Valley': ('Ruin Valley', 'Water Path'), 'Green Path': ('Green Path', 'Ruin Valley'),
+    'Outcast Island': ('Outcast Island', 'Green Path'), 'Pattern Bush': ('Pattern Bush', 'Outcast Island'), 'Altering Cave': ('Altering Cave', 'Pattern Bush'),
+    'Canyon Entrance': ('Canyon Entrance', 'Seven Island'), 'Sevault Canyon': ('Sevault Canyon', 'Canyon Entrance'), 'Tanoby Ruins': ('Tanoby Ruins', 'Sevault Canyon'),
+    'Trainer Tower': ('Trainer Tower', 'Tanoby Ruins'),
+}
 SUPPLEMENTS = {
-    'platinum': {**SINNOH_SUPPLEMENT, 'versions': ['platinum']},
-    'diamond-pearl': {**SINNOH_SUPPLEMENT, 'versions': ['diamond', 'pearl']},
+    'platinum': {**SINNOH_SUPPLEMENT, 'sources': [(4, ['platinum'])]},
+    'diamond-pearl': {**SINNOH_SUPPLEMENT, 'sources': [(4, ['diamond', 'pearl'])]},
+    'gold-silver': {'sources': [(1, ['gold', 'silver'])], 'add': {'Celadon City': ('Celadon City', None)}},
+    'crystal': {'sources': [(1, ['crystal'])], 'add': {'Celadon City': ('Celadon City', None)}},
+    'heartgold-soulsilver': {'sources': [(1, ['heartgold', 'soulsilver']), (2, ['heartgold', 'soulsilver'])],
+                             'add': {'Seafoam Islands': ('Seafoam Islands', 'Route 20'), 'Cerulean Cave': ('Cerulean Cave', None),
+                                     'Embedded Tower': ('Embedded Tower', None)}},
+    'firered-leafgreen': {'sources': [(1, ['firered', 'leafgreen'])], 'add': {'S.S. Anne': ('S.S. Anne', 'Vermilion City'), **SEVII}},
+    'ruby-sapphire': {'sources': [(3, ['ruby', 'sapphire'])],
+                      'add': {'Team Magma Hideout': ('Team Magma Hideout', 'Jagged Pass'), 'Team Aqua Hideout': ('Team Aqua Hideout', 'Lilycove City'),
+                              **HOENN_REGIS, 'Southern Island': ('Southern Island', None)}},
+    'emerald': {'sources': [(3, ['emerald'])],
+                'add': {'Team Aqua Hideout': ('Team Aqua Hideout', 'Lilycove City'), **HOENN_REGIS, 'Southern Island': ('Southern Island', None),
+                        'Terra Cave': ('Terra Cave', None), 'Marine Cave': ('Marine Cave', None)}},
+    'oras': {'sources': [(3, ['omega-ruby', 'alpha-sapphire'])],
+             'add': {'Team Aqua Hideout': ('Team Aqua Hideout', 'Lilycove City'), 'Mossdeep Space Center': ('Mossdeep Space Center', 'Mossdeep City'),
+                     **HOENN_REGIS, 'Soaring in the sky': ('Soaring in the Sky', None)}},
+    'black-white': {'sources': [(5, ['black', 'white'])],
+                    'add': {"Icirrus City": ('Icirrus City', 'Moor of Icirrus'), "Trial Chamber": ('Trial Chamber', 'Victory Road'),
+                            "Challenger's Cave": ("Challenger's Cave", 'Trial Chamber'), "N's Castle": ("N's Castle", "Challenger's Cave"),
+                            'Giant Chasm': ('Giant Chasm', None), 'Guidance Chamber': ('Guidance Chamber', None)}},
+    'black2-white2': {'sources': [(5, ['black-2', 'white-2'])],
+                      'add': {'Route 8': ('Route 8', 'Route 7'), 'Guidance Chamber': ('Guidance Chamber', None), 'Nature Sanctuary': ('Nature Sanctuary', None),
+                              'Rocky Mountain Room': ('Rocky Mountain Room', None), 'Glacier Room': ('Glacier Room', None), 'Iron Room': ('Iron Room', None)}},
+    'x-y': {'sources': [(6, ['x', 'y'])],
+            'add': {'Tower of Mastery': ('Tower of Mastery', 'Shalour City'), 'Unknown Dungeon': ('Unknown Dungeon', None), 'Friend Safari': ('Friend Safari', None)}},
+    'sun-moon': {'sources': [(7, ['sun', 'moon'])],
+                 'add': {'Royal Avenue': ('Royal Avenue', None), 'Aether Paradise': ('Aether Paradise', None),
+                         'Lake of the Sunne': ('Lake of the Sunne', 'Lake of the Moone'), 'Altar of the Moone': ('Altar of the Moone', 'Altar of the Sunne')}},
+    'usum': {'sources': [(7, ['ultra-sun', 'ultra-moon'])],
+             'add': {'Heahea City': ('Heahea City', 'Route 4'), 'Heahea Beach': ('Heahea Beach', 'Heahea City'), 'Sandy Cave': ('Sandy Cave', None),
+                     'Lake of the Sunne': ('Lake of the Sunne', 'Lake of the Moone'), 'Ultra Megalopolis': ('Ultra Megalopolis', None),
+                     'Ultra Space Wilds': ('Ultra Space Wilds', None)}},
+    'sword-shield': {'sources': [(8, ['sword', 'shield'])],
+                     'add': {'Meetup Spot': ('Meetup Spot', 'Route 2'), 'Turffield': ('Turffield', 'Route 4'), 'Hammerlocke': ('Hammerlocke', 'Hammerlocke Hills'),
+                             'Stow-on-Side': ('Stow-on-Side', 'Route 6'), 'Ballonlea': ('Ballonlea', 'Glimwood Tangle'), 'Circhester': ('Circhester', 'Route 8'),
+                             'Spikemuth': ('Spikemuth', 'Route 9'), 'Wyndon': ('Wyndon', 'Route 10'), 'Energy Plant': ('Energy Plant', None),
+                             'Max Dens in the Galar Wild Area': ('Max Raid Dens', None)}},
 }
 
 
-# Per-game corrections to boss names / categories: {game: {name in data: (fixed name, type or None)}}.
-# The story's final boss gets the 'final' type so it's listed and sets a level cap; in Black/White N plays
-# the rival's part, so all his fights are listed too.
+# Per-game corrections to boss names / categories: {game: {"Name" or "Name@Location": (fixed name, type)}}.
+# The data files story climaxes (villain bosses) as evil-team, which the Bosses tab hides; they get the
+# 'final' (story boss) type so they're listed and set level caps. "@Location" picks one fight of a name
+# that appears more than once (Maxie at Mt. Chimney is not a climax). In Black/White N plays the rival.
+STORY = 'final'
 BOSS_FIXES = {
-    'black-white': {'Ghestsis': ('Ghetsis', 'final'), 'N': ('N', 'rival')},
-    'blaze-black': {'Ghestsis': ('Ghetsis', 'final'), 'N': ('N', 'rival')},
-    'black2-white2': {'Ghetsis': ('Ghetsis', 'final')},
-    'blaze-black-2': {'Ghetsis': ('Ghetsis', 'final')},
+    'black-white': {'Ghestsis': ('Ghetsis', STORY), 'N': ('N', 'rival')},
+    'blaze-black': {'Ghestsis': ('Ghetsis', STORY), 'N': ('N', 'rival')},
+    'black2-white2': {'Ghetsis': ('Ghetsis', STORY)},
+    'blaze-black-2': {'Ghetsis': ('Ghetsis', STORY)},
+    'diamond-pearl': {'Mars & Jupiter@Spear Pillar': ('Mars & Jupiter', STORY), 'Cyrus@Spear Pillar': ('Cyrus', STORY)},
+    'bdsp': {'Mars & Jupiter@Spear Pillar': ('Mars & Jupiter', STORY), 'Cyrus@Spear Pillar': ('Cyrus', STORY)},
+    'platinum': {'Mars & Jupiter@Spear Pillar': ('Mars & Jupiter', STORY), 'Cyrus@Distortion World': ('Cyrus', STORY)},
+    'renegade-platinum': {'Cyrus@Distortion World': ('Cyrus', STORY)},
+    'ruby-sapphire': {'Maxie@Seafloor Cavern': ('Maxie', STORY)},
+    'emerald': {'Maxie & Tabitha@Mossdeep Space Center': ('Maxie & Tabitha', STORY), 'Archie@Seafloor Cavern': ('Archie', STORY)},
+    'oras': {'Maxie@Seafloor Cavern': ('Maxie', STORY)},
+    'rising-ruby': {'Maxie@Seafloor Cavern': ('Maxie', STORY)},
+    'emerald-kaizo': {'Archie@Seafloor Cavern': ('Archie', STORY)},
+    'run-and-bun': {'Leader Maxie@Mossdeep Space Center': ('Maxie', STORY), 'Leader Archie@Cave of Origin': ('Archie', STORY)},
+    'sun-moon': {'Lusamine@Aether Paradise': ('Lusamine', STORY), 'Ultra Lusamine@Ultra Space': ('Lusamine', STORY)},
+    'usum': {'Necrozma@Megalopolis': ('Necrozma', STORY)},
+    'sword-shield': {'Oleana@Rose Tower': ('Oleana', STORY), 'Rose@Energy Plant': ('Rose', STORY)},
 }
+
+
+def pokeapi_locations(region, versions):
+    cache = os.path.join(os.path.dirname(CACHE), f"pokeapi-locations-{region}-{'-'.join(versions)}.json")
+    if not os.path.exists(cache):
+        script = os.path.join(os.path.dirname(__file__), 'pokeapi-locations.py')
+        out = subprocess.run([sys.executable, script, str(region), *versions], check=True, capture_output=True, text=True).stdout
+        open(cache, 'w').write(out)
+    return json.load(open(cache))
 
 
 def supplement(game, locations):
     cfg = SUPPLEMENTS.get(game)
     if not cfg:
         return
-    cache = os.path.join(os.path.dirname(CACHE), f'locations-{game}.json')
-    if not os.path.exists(cache):
-        script = os.path.join(os.path.dirname(__file__), 'pokeapi-locations.py')
-        out = subprocess.run([sys.executable, script, str(cfg['region']), *cfg['versions']], check=True, capture_output=True, text=True).stdout
-        open(cache, 'w').write(out)
+    found = [f for region, versions in cfg['sources'] for f in pokeapi_locations(region, versions)]
     norm = lambda n: re.sub(r'^the', '', re.sub(r'[^a-z0-9]', '', n.lower().replace('sea route', 'route')))
     have = {norm(l['n']) for l in locations}
+
+    def insert_after(anchor, entry):
+        idx = next((i for i, l in enumerate(locations) if l['n'] == anchor), None)
+        if anchor and idx is None:
+            print(f'  {game}: anchor "{anchor}" not found, "{entry["n"]}" goes at the end')
+        locations.insert(len(locations) if idx is None else idx + 1, entry)
+        have.add(norm(entry['n']))
+
+    if 'add' in cfg:
+        by_api = {f['n']: f for f in found}
+        for api_name, (name, anchor) in cfg['add'].items():
+            if norm(name) in have:
+                continue
+            if api_name not in by_api:
+                print(f'  {game}: "{api_name}" not in PokeAPI data')
+                continue
+            insert_after(anchor, {'n': name, 'e': by_api[api_name]['e']})
+        return
+
     missing = []
-    for found in json.load(open(cache)):
-        name = re.sub(r'^Sea Route', 'Route', found['n'])
-        if found['n'] in cfg['skip'] or found['slug'] in cfg['skip'] or norm(name) in have:
+    for f in found:
+        name = re.sub(r'^Sea Route', 'Route', f['n'])
+        if f['n'] in cfg['skip'] or f['slug'] in cfg['skip'] or norm(name) in have:
             continue
-        missing.append({'n': name, 'e': found['e']})
+        missing.append({'n': name, 'e': f['e']})
     by_name = {m['n']: m for m in missing}
     for name, anchor in cfg['after'].items():
         if name in by_name:
-            idx = next((i for i, l in enumerate(locations) if l['n'] == anchor), len(locations) - 1)
-            locations.insert(idx + 1, by_name.pop(name))
+            insert_after(anchor, by_name.pop(name))
     idx = next((i for i, l in enumerate(locations) if l['n'] == cfg['league']), len(locations) - 1)
     for name in cfg['postgame']:
         if name in by_name:
@@ -219,7 +309,8 @@ def parse_routes(path):
                            'after': len(locations)})
             continue
         name, _, mons = line.partition('|')
-        name = TYPOS.get(name.strip(), name)
+        name = name.strip().lstrip('-').strip()  # stray "-Hau'oli City"-style prefixes
+        name = TYPOS.get(name, name)
         enc = []
         for m in mons.split(','):
             if m.strip():
@@ -299,7 +390,8 @@ for game, (rfile, lfile) in GAMES.items():
         if not league or not league['team'] or b['id'] in seen:
             continue
         seen.add(b['id'])
-        name, btype = BOSS_FIXES.get(game, {}).get(league['name'], (league['name'], None))
+        fixes = BOSS_FIXES.get(game, {})
+        name, btype = fixes.get(f"{league['name']}@{b['loc']}") or fixes.get(league['name']) or (league['name'], None)
         boss = {'id': b['id'], 'name': name, 'type': btype or b['type'], 'loc': b['loc'], 'after': b['after'], 'team': league['team']}
         if league['spec']:
             boss['spec'] = league['spec']

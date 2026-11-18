@@ -13,7 +13,7 @@ export const BOSS_TYPE_LABELS: Record<BossType, StringKey> = {
   final: 'bossFinal',
 }
 
-/** Bosses that set level caps: gyms, the league and the story's final boss. */
+/** Bosses that set level caps: gyms, the league and the story bosses. */
 export const isMajorBoss = (b: Boss) => b.type === 'gym-leader' || b.type === 'elite-four' || b.type === 'final'
 
 /** Bosses listed in the Bosses tab: gyms, the league and rivals. */
