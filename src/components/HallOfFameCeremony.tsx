@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { getSpecies } from '../data/pokedex'
 import type { HallOfFameEntry } from '../db/types'
-import { useSettings, useT } from '../lib/settings'
+import { daysLabel, useSettings, useT } from '../lib/settings'
 import { playChime, playFanfare } from '../lib/sound'
 import { spriteStyleForGameId } from '../lib/sprites'
 import Sprite from './Sprite'
@@ -115,7 +115,7 @@ export default function HallOfFameCeremony({ entry, onClose }: { entry: HallOfFa
                   <bdi>{entry.trainer}</bdi> ·{' '}
                 </>
               )}
-              {new Date(entry.enteredAt).toLocaleDateString(lang)} · {t('hofDays', { days })}
+              {new Date(entry.enteredAt).toLocaleDateString(lang)} · {daysLabel(t, days)}
             </div>
             <div className="mt-1 text-white/60">
               🏅 {entry.stats.badges} · ⚪ {entry.stats.caught} · 🪦 {entry.stats.deaths}

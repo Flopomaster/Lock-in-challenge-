@@ -8,7 +8,7 @@ import { getSpecies } from '../data/pokedex'
 import { db } from '../db/db'
 import type { HallOfFameEntry } from '../db/types'
 import { VARIANT_LABELS } from '../lib/rules'
-import { useSettings, useT } from '../lib/settings'
+import { daysLabel, useSettings, useT } from '../lib/settings'
 import { spriteStyleForGameId } from '../lib/sprites'
 
 export default function HallOfFame() {
@@ -76,7 +76,7 @@ function Plaque({ entry, number, lang, onReplay }: { entry: HallOfFameEntry; num
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border px-4 py-2.5 text-xs text-text-dim">
         <span>{t('hofInducted', { date: new Date(entry.enteredAt).toLocaleDateString(lang) })}</span>
-        <span>{t('hofDays', { days })}</span>
+        <span>{daysLabel(t, days)}</span>
         <span>🏅 {entry.stats.badges}</span>
         <span>🪦 {entry.stats.deaths}</span>
       </div>

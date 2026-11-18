@@ -51,7 +51,7 @@ export default function BossCard({ boss, run, starter, style, defaultOpen }: Pro
         </button>
         <button
           type="button"
-          onClick={() => toggleBossDefeated(run, boss.id)}
+          onClick={() => toggleBossDefeated(run, boss)}
           aria-pressed={done}
           aria-label={t('markDefeated')}
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 text-lg font-bold transition ${

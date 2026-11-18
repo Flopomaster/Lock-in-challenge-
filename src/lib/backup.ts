@@ -1,5 +1,5 @@
 import { db } from '../db/db'
-import type { Encounter, HallOfFameEntry, Run } from '../db/types'
+import type { Encounter, HallOfFameEntry, JournalEvent, Run } from '../db/types'
 
 interface Backup {
   app: 'nuzlocke-tracker'
@@ -8,6 +8,7 @@ interface Backup {
   runs: Run[]
   encounters: Encounter[]
   hallOfFame?: HallOfFameEntry[]
+  journal?: JournalEvent[]
 }
 
 export async function exportBackup() {
@@ -18,6 +19,7 @@ export async function exportBackup() {
     runs: await db.runs.toArray(),
     encounters: await db.encounters.toArray(),
     hallOfFame: await db.hallOfFame.toArray(),
+    journal: await db.journal.toArray(),
   }
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
@@ -38,14 +40,16 @@ export async function importBackup(file: File, mode: 'replace' | 'add'): Promise
     throw new Error('invalid backup')
   }
   let firstRunId: number | undefined
-  await db.transaction('rw', db.runs, db.encounters, db.hallOfFame, async () => {
+  await db.transaction('rw', [db.runs, db.encounters, db.hallOfFame, db.journal], async () => {
     if (mode === 'replace') {
       await db.runs.clear()
       await db.encounters.clear()
       await db.hallOfFame.clear()
+      await db.journal.clear()
       await db.runs.bulkAdd(data.runs)
       await db.encounters.bulkAdd(data.encounters)
       await db.hallOfFame.bulkAdd(data.hallOfFame ?? [])
+      await db.journal.bulkAdd(data.journal ?? [])
       firstRunId = data.runs[0]?.id
       return
     }
@@ -55,8 +59,15 @@ export async function importBackup(file: File, mode: 'replace' | 'add'): Promise
       newIds.set(id, newId)
       firstRunId ??= newId
     }
-    await db.encounters.bulkAdd(
-      data.encounters.filter((e) => newIds.has(e.runId)).map(({ id: _id, ...e }) => ({ ...e, runId: newIds.get(e.runId)! }) as Encounter),
+    // Encounters get new ids too; keep a map so journal entries still point at the right Pokémon.
+    const newEncounterIds = new Map<number | undefined, number>()
+    for (const { id, ...e } of data.encounters.filter((x) => newIds.has(x.runId))) {
+      newEncounterIds.set(id, (await db.encounters.add({ ...e, runId: newIds.get(e.runId)! } as Encounter)) as number)
+    }
+    await db.journal.bulkAdd(
+      (data.journal ?? [])
+        .filter((j) => newIds.has(j.runId))
+        .map(({ id: _id, ...j }) => ({ ...j, runId: newIds.get(j.runId)!, encounterId: newEncounterIds.get(j.encounterId) }) as JournalEvent),
     )
     await db.hallOfFame.bulkAdd(
       (data.hallOfFame ?? []).map(({ id: _id, ...h }) => ({ ...h, runId: newIds.get(h.runId) }) as HallOfFameEntry),

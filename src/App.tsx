@@ -7,6 +7,7 @@ import Graveyard from './pages/Graveyard'
 import Home from './pages/Home'
 import HallOfFame from './pages/HallOfFame'
 import Induct from './pages/Induct'
+import Journal from './pages/Journal'
 import Locations from './pages/Locations'
 import NewRun from './pages/NewRun'
 import Runs from './pages/Runs'
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="bosses" element={<Bosses />} />
         <Route path="battle/:bossId" element={<BattlePlan />} />
         <Route path="induct" element={<Induct />} />
+        <Route path="journal" element={<Journal />} />
         <Route path="graveyard" element={<Graveyard />} />
         <Route path="soul-link" element={<SoulLink />} />
         <Route path="wheel" element={<Wheel />} />

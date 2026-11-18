@@ -97,7 +97,7 @@ export default function Dashboard() {
                 key={g.id}
                 type="button"
                 title={g.name}
-                onClick={() => toggleBossDefeated(run, g.id)}
+                onClick={() => toggleBossDefeated(run, g)}
                 className={`rounded-full p-1 transition ${isDefeated(run, g) ? 'bg-accent/20 text-accent' : 'bg-surface-hi text-text-dim opacity-40'}`}
               >
                 <IconBadge size={18} />
@@ -187,6 +187,7 @@ export default function Dashboard() {
         <Label>{t('tools')}</Label>
         <div className="grid grid-cols-2 gap-2.5">
           {run.variant === 'soullink' && <Tool to="/soul-link" icon="🔗" label={t('soulLink')} />}
+          <Tool to="/journal" icon="📖" label={t('journal')} />
           <Tool to="/wheel" icon="🎡" label={t('wheel')} />
           <Tool to="/share" icon="📸" label={t('shareImage')} />
           <Tool to="/stats" icon="📊" label={t('stats')} />

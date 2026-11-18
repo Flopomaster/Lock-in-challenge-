@@ -42,6 +42,13 @@ The app opens on a home screen: a greeting, the run to continue (team, next boss
 quick switching between active runs, the latest Hall of Fame team and lifetime stats. A run's own screens live under
 `/run`, with a home button in their header.
 
+## Run journal
+
+Each run has a journal (Tools → Journal): the run's story in order — start, catches (as the species caught),
+failed encounters, evolutions, boss wins, deaths, victory and the Hall of Fame — grouped by day and shareable
+as text. Evolutions and boss wins are logged in a `journal` table as they happen; the rest is read from the
+run's own records.
+
 ## Development
 
 ```sh

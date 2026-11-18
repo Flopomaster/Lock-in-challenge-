@@ -12,5 +12,11 @@ user's device (IndexedDB); deploys to GitHub Pages on push to `main`. The owner 
 
 ## Ideas offered but not chosen yet
 
-Damage calculator (Showdown calc) in the battle plan, "ready to evolve", run journal/timeline,
-haptics, gift/static clause, quick "next route" encounter, level-cap bar per Pokémon.
+Damage calculator (Showdown calc) in the battle plan, "ready to evolve", haptics, gift/static clause,
+quick "next route" encounter, level-cap bar per Pokémon, persistent storage + backup reminders.
+
+## Data notes
+
+Route/boss data comes from nuzlocke.data via `scripts/build-games.py`, which also fills missing places
+from PokeAPI (`SUPPLEMENTS`, hand-checked per game) and fixes boss names/categories (`BOSS_FIXES`;
+villain climaxes become 'final' = story bosses). When a user reports a missing place or fight, fix it there.

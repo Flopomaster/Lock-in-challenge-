@@ -16,12 +16,14 @@ interface Props {
   allowUnknown?: boolean
   /** Focus the search field on open (skip it when quick picks are shown, so the keyboard doesn't cover them). */
   autoFocus?: boolean
+  /** Start with the list showing even when a species is already chosen (e.g. picking an evolution). */
+  startOpen?: boolean
 }
 
-export default function SpeciesPicker({ value, onChange, style, maxDex = POKEDEX.length, only, allowUnknown, autoFocus = true }: Props) {
+export default function SpeciesPicker({ value, onChange, style, maxDex = POKEDEX.length, only, allowUnknown, autoFocus = true, startOpen = false }: Props) {
   const t = useT()
   const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(!value)
+  const [open, setOpen] = useState(startOpen || !value)
   const selected = getSpecies(value)
 
   const results = useMemo(() => {

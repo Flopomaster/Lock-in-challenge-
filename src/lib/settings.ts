@@ -61,3 +61,6 @@ export function translate(lang: Lang): TFunction {
 export function useT(): TFunction {
   return translate(useSettings().lang)
 }
+
+/** "1 day" / "N days" (Hebrew says "יום אחד" rather than "1 ימים"). */
+export const daysLabel = (t: TFunction, days: number) => (days === 1 ? t('oneDay') : t('hofDays', { days }))

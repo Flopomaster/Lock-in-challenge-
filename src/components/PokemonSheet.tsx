@@ -80,6 +80,7 @@ export default function PokemonSheet({ run, encounter, partyCount, onClose, onDe
             }}
             style={style}
             only={evolutionFamily(species)}
+            startOpen
           />
         )}
 

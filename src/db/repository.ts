@@ -1,4 +1,4 @@
-import type { GameData } from '../data/gameData'
+import type { Boss, GameData } from '../data/gameData'
 import { GEN_MAX_DEX, getGame } from '../data/games'
 import { getSpecies } from '../data/pokedex'
 import { db } from './db'
@@ -38,11 +38,16 @@ export async function migrateStarterLocation(encounters: Encounter[], data: Game
 
 const RENAMED_LOCATIONS: Record<string, string> = { 'Routes 219': 'Route 219' }
 
-export function toggleBossDefeated(run: Run, bossId: string) {
+export async function toggleBossDefeated(run: Run, boss: Boss) {
   const defeated = new Set(run.defeatedBosses ?? [])
-  if (defeated.has(bossId)) defeated.delete(bossId)
-  else defeated.add(bossId)
-  return db.runs.update(run.id!, { defeatedBosses: [...defeated] })
+  const beaten = !defeated.has(boss.id)
+  if (beaten) defeated.add(boss.id)
+  else defeated.delete(boss.id)
+  await db.runs.update(run.id!, { defeatedBosses: [...defeated] })
+  // Journal: record the win (or take it back when unmarked).
+  await db.journal.where({ runId: run.id!, bossId: boss.id }).delete()
+  if (beaten)
+    await db.journal.add({ runId: run.id!, at: Date.now(), kind: 'boss', bossId: boss.id, bossName: boss.name, gym: boss.type === 'gym-leader' })
 }
 
 export async function createRun(run: Omit<Run, 'id'>): Promise<number> {
@@ -54,8 +59,9 @@ export function updateRun(id: number, patch: Partial<Run>) {
 }
 
 export function deleteRun(id: number) {
-  return db.transaction('rw', db.runs, db.encounters, async () => {
+  return db.transaction('rw', db.runs, db.encounters, db.journal, async () => {
     await db.encounters.where('runId').equals(id).delete()
+    await db.journal.where('runId').equals(id).delete()
     await db.runs.delete(id)
   })
 }
@@ -68,6 +74,11 @@ async function nextOrder(runId: number, status: EncounterStatus) {
 export async function saveEncounter(enc: Encounter): Promise<void> {
   if (enc.id) {
     const prev = await db.encounters.get(enc.id)
+    // Journal: a species change within the same family is an evolution (a different family is a correction).
+    const before = getSpecies(prev?.speciesId)
+    const after = getSpecies(enc.speciesId)
+    if (prev && prev.status !== 'missed' && before && after && before.id !== after.id && before.chain === after.chain)
+      await db.journal.add({ runId: enc.runId, at: Date.now(), kind: 'evolve', encounterId: enc.id, from: before.id, to: after.id })
     if (prev && prev.status !== enc.status) enc = { ...enc, order: await nextOrder(enc.runId, enc.status) }
     await db.encounters.put(enc)
   } else {
@@ -83,8 +94,9 @@ export async function moveTo(enc: Encounter, status: EncounterStatus, death?: De
   })
 }
 
-export function deleteEncounter(id: number) {
-  return db.encounters.delete(id)
+export async function deleteEncounter(id: number) {
+  await db.journal.where({ encounterId: id }).delete()
+  await db.encounters.delete(id)
 }
 
 /** Dupes Clause: an already-caught Pokémon (alive or dead) from the same evolution family. */

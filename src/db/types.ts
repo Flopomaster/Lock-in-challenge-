@@ -102,3 +102,22 @@ export interface HallOfFameEntry {
   /** The fallen, remembered alongside the champions. */
   fallen: { speciesId?: number; nickname?: string }[]
 }
+
+/**
+ * Journal entries for moments the rest of the data doesn't timestamp: evolutions and boss wins.
+ * (Catches, misses, deaths and the run's start/end are read straight from their own records.)
+ */
+export interface JournalEvent {
+  id?: number
+  runId: number
+  at: number
+  kind: 'evolve' | 'boss'
+  encounterId?: number
+  /** Evolution: species before and after. */
+  from?: number
+  to?: number
+  bossId?: string
+  bossName?: string
+  /** Boss win: whether it was a gym (a badge). */
+  gym?: boolean
+}
