@@ -2,7 +2,7 @@ import type { Boss, GameData } from '../data/gameData'
 import { GEN_MAX_DEX, getGame } from '../data/games'
 import { getSpecies } from '../data/pokedex'
 import { db } from './db'
-import type { Death, Encounter, EncounterStatus, Run } from './types'
+import type { Death, Encounter, EncounterStatus, HallOfFameEntry, Run } from './types'
 
 export function runLocations(run: Run, data: GameData | null): string[] {
   const base = run.customGame
@@ -54,6 +54,31 @@ export async function toggleBossDefeated(run: Run, boss: Boss) {
 export async function setAce(run: Run, encounterId: number | undefined) {
   await db.runs.update(run.id!, { aceId: encounterId })
   if (encounterId !== undefined) await db.journal.add({ runId: run.id!, at: Date.now(), kind: 'ace', encounterId })
+  // A run already in the Hall of Fame: crowning (or uncrowning) after the win updates its plaque too.
+  const entry = await db.hallOfFame.where({ runId: run.id! }).first()
+  if (entry) await markHallOfFameAce(entry, encounterId === undefined ? undefined : await db.encounters.get(encounterId))
+}
+
+/**
+ * Marks which champion on a Hall of Fame plaque is the ace. The plaque's team is a snapshot, so the
+ * Pokémon is matched by where it was caught (unique per encounter in a run) and its species line.
+ */
+export async function markHallOfFameAce(entry: HallOfFameEntry, ace: Encounter | undefined) {
+  const chain = getSpecies(ace?.speciesId)?.chain
+  const team = entry.team.map((m) => ({
+    ...m,
+    ace: (!!ace && m.location === ace.location && getSpecies(m.speciesId)?.chain === chain) || undefined,
+  }))
+  if (team.some((m, i) => !!m.ace !== !!entry.team[i].ace)) await db.hallOfFame.update(entry.id!, { team })
+}
+
+/** Plaques made before the crown existed: take the ace from their run, if the run is still there. */
+export async function backfillHallOfFameAces(entries: HallOfFameEntry[]) {
+  for (const entry of entries) {
+    if (entry.team.some((m) => m.ace) || entry.runId === undefined) continue
+    const run = await db.runs.get(entry.runId)
+    if (run?.aceId !== undefined) await markHallOfFameAce(entry, await db.encounters.get(run.aceId))
+  }
 }
 
 export async function createRun(run: Omit<Run, 'id'>): Promise<number> {

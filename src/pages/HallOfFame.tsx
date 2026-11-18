@@ -1,11 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import HallOfFameCeremony from '../components/HallOfFameCeremony'
 import PageShell from '../components/PageShell'
 import Sprite from '../components/Sprite'
 import { IconTrophy } from '../components/icons'
 import { getSpecies } from '../data/pokedex'
 import { db } from '../db/db'
+import { backfillHallOfFameAces } from '../db/repository'
 import type { HallOfFameEntry } from '../db/types'
 import { VARIANT_LABELS } from '../lib/rules'
 import { daysLabel, useSettings, useT } from '../lib/settings'
@@ -16,6 +17,9 @@ export default function HallOfFame() {
   const { lang } = useSettings()
   const entries = useLiveQuery(() => db.hallOfFame.orderBy('enteredAt').reverse().toArray())
   const [replay, setReplay] = useState<HallOfFameEntry>()
+  useEffect(() => {
+    if (entries) void backfillHallOfFameAces(entries)
+  }, [entries])
   if (!entries) return null
 
   return (
