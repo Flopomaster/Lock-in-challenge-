@@ -51,7 +51,7 @@ export default function NewRun() {
       createdAt: Date.now(),
     })
     update({ currentRunId: id })
-    navigate('/', { replace: true })
+    navigate('/run', { replace: true })
   }
 
   const official = GAMES.filter((g) => !g.hack)

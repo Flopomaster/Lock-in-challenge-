@@ -24,7 +24,7 @@ export default function Runs() {
 
   const select = (id: number) => {
     update({ currentRunId: id })
-    navigate('/')
+    navigate('/run')
   }
 
   // Winning a run inducts its team into the Hall of Fame, with the ceremony.

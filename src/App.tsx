@@ -4,6 +4,7 @@ import BattlePlan from './pages/BattlePlan'
 import Bosses from './pages/Bosses'
 import Dashboard from './pages/Dashboard'
 import Graveyard from './pages/Graveyard'
+import Home from './pages/Home'
 import HallOfFame from './pages/HallOfFame'
 import Induct from './pages/Induct'
 import Locations from './pages/Locations'
@@ -19,8 +20,9 @@ import Wheel from './pages/Wheel'
 export default function App() {
   return (
     <Routes>
+      <Route index element={<Home />} />
       <Route element={<Layout />}>
-        <Route index element={<Dashboard />} />
+        <Route path="run" element={<Dashboard />} />
         <Route path="routes" element={<Locations />} />
         <Route path="team" element={<Team />} />
         <Route path="bosses" element={<Bosses />} />

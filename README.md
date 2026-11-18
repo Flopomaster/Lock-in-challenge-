@@ -36,6 +36,12 @@ A mobile-first PWA for tracking Pokémon Nuzlocke runs. Works offline; all data 
 - Four moves per Pokémon (generation-filtered, from PokéAPI) and a dashboard warning when nobody hits the next boss super-effectively
 - Hall of Fame: winning a run freezes the champion team in a permanent gallery, inducted with a full ceremony (fanfare, spotlight per champion, the fallen remembered)
 
+## Home screen
+
+The app opens on a home screen: a greeting, the run to continue (team, next boss and level cap, alive / dead / badges),
+quick switching between active runs, the latest Hall of Fame team and lifetime stats. A run's own screens live under
+`/run`, with a home button in their header.
+
 ## Development
 
 ```sh

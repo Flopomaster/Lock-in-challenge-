@@ -29,6 +29,16 @@ export function IconMap(p: IconProps) {
     <path d="M9 4v13M15 6.5v13" /></Svg>
 }
 
+export function IconRoute(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <circle cx="6" cy="19" r="2" />
+      <circle cx="18" cy="5" r="2" />
+      <path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16" />
+    </Svg>
+  )
+}
+
 export function IconTeam(p: IconProps) {
   return <Svg {...p}><circle cx="12" cy="12" r="8.5" />
     <path d="M3.5 12h5.5M15 12h5.5" />
