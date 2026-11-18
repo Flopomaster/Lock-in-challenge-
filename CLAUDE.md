@@ -10,6 +10,15 @@ user's device (IndexedDB); deploys to GitHub Pages on push to `main`. The owner 
   of exchanging share codes (`src/lib/soulLink.ts`). This needs a backend + sign-in (e.g. Supabase,
   which is available as a connector) — plan it with the owner before building.
 
+## Parked (owner wants to come back to it)
+
+- **Storytelling journal**: owner asked for a less dry, more story-like journal (`src/pages/Journal.tsx`).
+  Proposed: (1) chapters split by gym wins, each event written as varied narrative sentences in
+  Hebrew/English, big moments styled (deaths grey + candle, gym wins gold); (2) a "Wrapped"-style
+  full-screen story slideshow for a finished run (days, first catch, most painful loss, top killer,
+  survivor from start to finish, shareable final slide); (3) later maybe a region map of the journey.
+  Recommended 1 + 2. Also offered: a direct "📖 Journal" button on run cards and Hall of Fame plaques.
+
 ## Ideas offered but not chosen yet
 
 Damage calculator (Showdown calc) in the battle plan, "ready to evolve", haptics, gift/static clause,
