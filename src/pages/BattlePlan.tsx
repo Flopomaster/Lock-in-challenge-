@@ -40,13 +40,13 @@ export default function BattlePlan() {
       {!ours.length ? (
         <div className="card p-5 text-center text-text-dim">{t('noPartyForPlan')}</div>
       ) : (
-        team.map((mon, i) => <Matchup key={i} mon={mon} ours={ours} style={style} />)
+        team.map((mon, i) => <Matchup key={i} mon={mon} ours={ours} style={style} aceId={run.aceId} />)
       )}
     </div>
   )
 }
 
-function Matchup({ mon, ours, style }: { mon: BossMon; ours: Encounter[]; style: SpriteStyle }) {
+function Matchup({ mon, ours, style, aceId }: { mon: BossMon; ours: Encounter[]; style: SpriteStyle; aceId?: number }) {
   const t = useT()
   const types = bossMonTypes(mon, style.gen)
   const answers = rankAnswers(mon, ours, style.gen)
@@ -95,14 +95,14 @@ function Matchup({ mon, ours, style }: { mon: BossMon; ours: Encounter[]; style:
         <Label>{t('bestAnswers')}</Label>
         {nobodyHitsHard && <Warning>{t('noCoverage', { name: bossMonName(mon) })}</Warning>}
         {top.map((a) => (
-          <AnswerRow key={a.encounter.id} answer={a} bossLevel={mon.l} style={style} />
+          <AnswerRow key={a.encounter.id} answer={a} bossLevel={mon.l} style={style} ace={a.encounter.id === aceId} />
         ))}
       </div>
     </section>
   )
 }
 
-function AnswerRow({ answer, bossLevel, style }: { answer: Answer; bossLevel: number; style: SpriteStyle }) {
+function AnswerRow({ answer, bossLevel, style, ace }: { answer: Answer; bossLevel: number; style: SpriteStyle; ace?: boolean }) {
   const t = useT()
   const { encounter: e, offense, defense } = answer
   const offTone = offense.x > 1 ? 'bg-good-bg text-good' : offense.x < 1 ? 'bg-danger-bg text-danger' : 'bg-surface-hi text-text-dim'
@@ -113,6 +113,7 @@ function AnswerRow({ answer, bossLevel, style }: { answer: Answer; bossLevel: nu
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-1.5">
           <span className="truncate font-semibold">
+            {ace && '👑 '}
             <bdi>{displayName(e)}</bdi>
           </span>
           {e.level !== undefined && (

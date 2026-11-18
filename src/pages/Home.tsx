@@ -6,7 +6,7 @@ import { Label } from '../components/ui'
 import { useGameData } from '../data/gameData'
 import { getSpecies } from '../data/pokedex'
 import { db } from '../db/db'
-import { byOrder } from '../db/hooks'
+import { aceFirst } from '../db/hooks'
 import { runGameName, runMaxBadges } from '../db/repository'
 import type { Encounter, Run } from '../db/types'
 import { bossTeam, isDefeated, levelCap, nextBoss, starterType } from '../lib/bosses'
@@ -153,7 +153,7 @@ function HeroRun({ run, encounters, onOpen }: { run: Run; encounters: Encounter[
   const t = useT()
   const data = useGameData(run.customGame ? undefined : run.gameId)
   const style = spriteStyleForRun(run)
-  const party = encounters.filter((e) => e.status === 'party').sort(byOrder)
+  const party = encounters.filter((e) => e.status === 'party').sort(aceFirst(run.aceId))
   const alive = encounters.filter((e) => e.status === 'party' || e.status === 'box').length
   const dead = encounters.filter((e) => e.status === 'dead').length
   const gyms = data?.bosses.filter((b) => b.type === 'gym-leader') ?? []
@@ -182,7 +182,8 @@ function HeroRun({ run, encounters, onOpen }: { run: Run; encounters: Encounter[
       <div className="mt-2 flex min-h-[72px] items-end px-3">
         {party.length ? (
           party.map((e) => (
-            <div key={e.id} className="flex flex-1 flex-col items-center">
+            <div key={e.id} className="relative flex flex-1 flex-col items-center">
+              {e.id === run.aceId && <span className="ace-crown absolute -top-3 text-base">👑</span>}
               <Sprite id={e.speciesId} style={style} size={56} shiny={e.shiny} />
               <span className="max-w-full truncate text-[10px] font-semibold text-white/90">{e.nickname || getSpecies(e.speciesId)?.name}</span>
             </div>
@@ -216,7 +217,7 @@ function HeroRun({ run, encounters, onOpen }: { run: Run; encounters: Encounter[
 
 function RunChip({ run, encounters, onOpen }: { run: Run; encounters: Encounter[]; onOpen: () => void }) {
   const style = spriteStyleForRun(run)
-  const party = encounters.filter((e) => e.status === 'party').sort(byOrder).slice(0, 3)
+  const party = encounters.filter((e) => e.status === 'party').sort(aceFirst(run.aceId)).slice(0, 3)
   return (
     <button type="button" onClick={onOpen} className="card w-44 shrink-0 p-3 text-start transition active:scale-[0.98]">
       <div className="truncate text-sm font-bold">

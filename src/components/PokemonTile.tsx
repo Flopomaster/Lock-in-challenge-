@@ -10,17 +10,19 @@ interface Props {
   encounter: Encounter
   style: SpriteStyle
   overCap?: boolean
+  /** The run's ace: gold frame and a crown. */
+  ace?: boolean
   onClick?: () => void
 }
 
-export default function PokemonTile({ encounter, style, overCap, onClick }: Props) {
+export default function PokemonTile({ encounter, style, overCap, ace, onClick }: Props) {
   const t = useT()
   const species = getSpecies(encounter.speciesId)
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`card relative flex flex-col items-center px-2 pb-2.5 pt-1.5 text-center transition active:scale-[0.97] ${overCap ? '!border-warn' : ''}`}
+      className={`card relative flex flex-col items-center px-2 pb-2.5 pt-1.5 text-center transition active:scale-[0.97] ${overCap ? '!border-warn' : ''} ${ace ? 'ace-card' : ''}`}
     >
       {overCap && (
         <span className="absolute -top-2 start-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-warn px-1.5 text-[9px] font-bold text-white rtl:translate-x-1/2">
@@ -30,6 +32,7 @@ export default function PokemonTile({ encounter, style, overCap, onClick }: Prop
       <div className="relative">
         <Sprite id={encounter.speciesId} style={style} size={68} shiny={encounter.shiny} />
         {encounter.shiny && <span className="absolute -top-0.5 end-0 text-xs">✨</span>}
+        {ace && <span className="ace-crown absolute -top-2 start-0 text-lg">👑</span>}
       </div>
       <div className="w-full truncate text-sm font-bold">
         <bdi>{displayName(encounter)}</bdi>

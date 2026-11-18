@@ -50,6 +50,12 @@ export async function toggleBossDefeated(run: Run, boss: Boss) {
     await db.journal.add({ runId: run.id!, at: Date.now(), kind: 'boss', bossId: boss.id, bossName: boss.name, gym: boss.type === 'gym-leader' })
 }
 
+/** Crowns a Pokémon as the run's ace (or takes the crown away with `undefined`), noting it in the journal. */
+export async function setAce(run: Run, encounterId: number | undefined) {
+  await db.runs.update(run.id!, { aceId: encounterId })
+  if (encounterId !== undefined) await db.journal.add({ runId: run.id!, at: Date.now(), kind: 'ace', encounterId })
+}
+
 export async function createRun(run: Omit<Run, 'id'>): Promise<number> {
   return (await db.runs.add(run as Run)) as number
 }

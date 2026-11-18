@@ -7,7 +7,7 @@ import PokemonTile from '../components/PokemonTile'
 import Sprite from '../components/Sprite'
 import { IconBadge, IconPlus, IconSkull, IconTrophy } from '../components/icons'
 import { Label, Warning } from '../components/ui'
-import { byOrder } from '../db/hooks'
+import { aceFirst } from '../db/hooks'
 import { displayName, runLocations, runMaxBadges, toggleBossDefeated, updateRun } from '../db/repository'
 import type { Encounter } from '../db/types'
 import { uncovered } from '../lib/battle'
@@ -23,7 +23,7 @@ export default function Dashboard() {
   const style = spriteStyleForRun(run)
   const [selected, setSelected] = useState<Encounter>()
 
-  const party = encounters.filter((e) => e.status === 'party').sort(byOrder)
+  const party = encounters.filter((e) => e.status === 'party').sort(aceFirst(run.aceId))
   const alive = encounters.filter((e) => e.status === 'party' || e.status === 'box').length
   const dead = encounters.filter((e) => e.status === 'dead')
   const recentDeaths = [...dead].sort((a, b) => (b.death?.at ?? 0) - (a.death?.at ?? 0)).slice(0, 3)
@@ -149,7 +149,7 @@ export default function Dashboard() {
         ) : (
           <div className="grid grid-cols-3 gap-2.5">
             {party.map((e) => (
-              <PokemonTile key={e.id} encounter={e} style={style} overCap={run.rules.levelCaps && overCap.includes(e)} onClick={() => setSelected(e)} />
+              <PokemonTile key={e.id} encounter={e} style={style} ace={e.id === run.aceId} overCap={run.rules.levelCaps && overCap.includes(e)} onClick={() => setSelected(e)} />
             ))}
           </div>
         )}

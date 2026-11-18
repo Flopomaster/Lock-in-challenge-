@@ -34,7 +34,9 @@ export default function Graveyard() {
       <div className="grid grid-cols-2 gap-3">
         {dead.map((e) => (
           <button key={e.id} type="button" onClick={() => setSelected(e)} className="card flex flex-col items-center px-3 pb-3 pt-2 text-center">
+            {e.id === run.aceId && <div className="ace-crown-fallen text-lg leading-none">👑</div>}
             <Sprite id={e.speciesId} style={style} size={56} dead shiny={e.shiny} />
+            {e.id === run.aceId && <div className="text-[10px] font-bold uppercase text-[#b8860b]">{t('aceFallen')}</div>}
             <div className="font-bold">
               <bdi>{displayName(e)}</bdi>
             </div>

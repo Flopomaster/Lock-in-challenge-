@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button } from '../components/ui'
-import { byOrder } from '../db/hooks'
+import { aceFirst } from '../db/hooks'
 import { runMaxBadges } from '../db/repository'
 import { gymCount, isDefeated } from '../lib/bosses'
 import { useRun } from '../lib/runContext'
@@ -16,7 +16,7 @@ export default function ShareImage() {
 
   useEffect(() => {
     let alive = true
-    const party = encounters.filter((e) => e.status === 'party').sort(byOrder)
+    const party = encounters.filter((e) => e.status === 'party').sort(aceFirst(run.aceId))
     const gyms = gymCount(data)
     const badges = gyms
       ? `${data!.bosses.filter((b) => b.type === 'gym-leader' && isDefeated(run, b)).length}/${gyms}`

@@ -97,6 +97,17 @@ export async function renderTeamImage(
     ctx.stroke()
     const e = party[i]
     if (!e) continue
+    if (e.id === run.aceId) {
+      // The ace: gold frame and a crown.
+      roundRect(ctx, x, y, cardW, cardH, 36)
+      ctx.strokeStyle = '#ffcb05'
+      ctx.lineWidth = 6
+      ctx.stroke()
+      ctx.font = `64px 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif`
+      ctx.textAlign = 'center'
+      ctx.fillText('👑', x + cardW / 2, y + 30)
+      ctx.textAlign = 'start'
+    }
     const img = sprites[i]
     if (img) {
       ctx.imageSmoothingEnabled = !isPixelStyle(style)

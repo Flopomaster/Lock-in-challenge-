@@ -18,7 +18,7 @@ export async function induct(run: Run, encounters: Encounter[], trainer: string 
     partnerName: run.partnerName,
     enteredAt: Date.now(),
     startedAt: run.createdAt,
-    team: party.map((e) => ({ speciesId: e.speciesId, nickname: e.nickname, level: e.level, shiny: e.shiny, location: e.location })),
+    team: party.map((e) => ({ speciesId: e.speciesId, nickname: e.nickname, level: e.level, shiny: e.shiny, location: e.location, ace: e.id === run.aceId || undefined })),
     stats: {
       caught: encounters.filter((e) => e.status !== 'missed').length,
       deaths: encounters.filter((e) => e.status === 'dead').length,

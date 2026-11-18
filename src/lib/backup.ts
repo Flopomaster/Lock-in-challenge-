@@ -64,6 +64,8 @@ export async function importBackup(file: File, mode: 'replace' | 'add'): Promise
     for (const { id, ...e } of data.encounters.filter((x) => newIds.has(x.runId))) {
       newEncounterIds.set(id, (await db.encounters.add({ ...e, runId: newIds.get(e.runId)! } as Encounter)) as number)
     }
+    for (const run of data.runs)
+      if (run.aceId !== undefined) await db.runs.update(newIds.get(run.id)!, { aceId: newEncounterIds.get(run.aceId) })
     await db.journal.bulkAdd(
       (data.journal ?? [])
         .filter((j) => newIds.has(j.runId))

@@ -16,6 +16,7 @@ type Entry =
   | { kind: 'catch' | 'miss' | 'death'; at: number; e: Encounter }
   | { kind: 'evolve'; at: number; e?: Encounter; from: number; to: number }
   | { kind: 'boss'; at: number; name: string; gym: boolean }
+  | { kind: 'ace'; at: number; e: Encounter }
   | { kind: 'won' | 'lost' | 'hof'; at: number }
 
 /** The run as a story: start, catches, losses, evolutions, boss wins and the ending, in order. */
@@ -48,6 +49,8 @@ export default function Journal() {
   for (const j of extra.events) {
     if (j.kind === 'evolve' && j.from && j.to) entries.push({ kind: 'evolve', at: j.at, e: byId.get(j.encounterId), from: j.from, to: j.to })
     if (j.kind === 'boss') entries.push({ kind: 'boss', at: j.at, name: j.bossName ?? '?', gym: !!j.gym })
+    const crowned = j.kind === 'ace' ? byId.get(j.encounterId) : undefined
+    if (crowned) entries.push({ kind: 'ace', at: j.at, e: crowned })
   }
   if (run.status !== 'active' && run.endedAt) entries.push({ kind: run.status === 'won' ? 'won' : 'lost', at: run.endedAt })
   if (extra.hof) entries.push({ kind: 'hof', at: extra.hof.enteredAt + 1 })
@@ -123,13 +126,15 @@ function Row({ entry, style }: { entry: Entry; style: ReturnType<typeof spriteSt
   const time = new Date(entry.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   const tone: Record<Entry['kind'], string> = {
     start: 'bg-primary-bg', catch: 'bg-surface', miss: 'bg-surface-hi/60 text-text-dim', death: 'bg-danger-bg',
-    evolve: 'bg-surface', boss: 'bg-warn-bg', won: 'bg-good-bg', lost: 'bg-danger-bg', hof: 'hof-plaque',
+    evolve: 'bg-surface', boss: 'bg-warn-bg', ace: 'ace-card bg-surface', won: 'bg-good-bg', lost: 'bg-danger-bg', hof: 'hof-plaque',
   }
   const sprite =
     entry.kind === 'catch' || entry.kind === 'miss' || entry.kind === 'death'
       ? <Sprite id={entry.e.speciesId} style={style} size={40} shiny={entry.e.shiny} dead={entry.kind !== 'catch'} />
       : entry.kind === 'evolve'
         ? <Sprite id={entry.to} style={style} size={40} shiny={entry.e?.shiny} />
+        : entry.kind === 'ace'
+        ? <Sprite id={entry.e.speciesId} style={style} size={40} shiny={entry.e.shiny} />
         : <span className="flex h-10 w-10 items-center justify-center text-2xl">{ICON[entry.kind]}</span>
   const body = <div className="min-w-0 flex-1 text-sm">{rich(entry, t)}</div>
   const inner = (
@@ -198,6 +203,12 @@ function rich(entry: Entry, t: TFunction) {
           {entry.gym && <span className="text-text-dim"> · {t('journalBadge')}</span>}
         </>
       )
+    case 'ace':
+      return (
+        <>
+          👑 {name(entry.e)} {t('journalAce')}
+        </>
+      )
     case 'won':
       return <b className="text-good">{t('journalWon')}</b>
     case 'lost':
@@ -222,6 +233,8 @@ function plainText(entry: Entry, t: TFunction): string {
       return `✨ ${entry.e ? displayName(entry.e) : speciesName(entry.from)} ${t('journalEvolved')}${speciesName(entry.to)}`
     case 'boss':
       return `🏅 ${t('journalBeat')} ${entry.name}`
+    case 'ace':
+      return `👑 ${displayName(entry.e)} ${t('journalAce')}`
     case 'won':
       return `🏆 ${t('journalWon')}`
     case 'lost':

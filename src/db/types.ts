@@ -41,6 +41,8 @@ export interface Run {
   customRules: string[]
   partnerName?: string
   partner?: SoulLinkPartner
+  /** The run's ace — its star Pokémon (an encounter id); can change during the run. */
+  aceId?: number
   extraLocations: string[]
   /** Manual badge count, used only for games without boss data. */
   badges: number
@@ -97,7 +99,7 @@ export interface HallOfFameEntry {
   enteredAt: number
   /** How long the run took, from creation to victory. */
   startedAt: number
-  team: { speciesId?: number; nickname?: string; level?: number; shiny?: boolean; location: string }[]
+  team: { speciesId?: number; nickname?: string; level?: number; shiny?: boolean; location: string; ace?: boolean }[]
   stats: { caught: number; deaths: number; badges: number }
   /** The fallen, remembered alongside the champions. */
   fallen: { speciesId?: number; nickname?: string }[]
@@ -111,7 +113,7 @@ export interface JournalEvent {
   id?: number
   runId: number
   at: number
-  kind: 'evolve' | 'boss'
+  kind: 'evolve' | 'boss' | 'ace'
   encounterId?: number
   /** Evolution: species before and after. */
   from?: number

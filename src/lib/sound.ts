@@ -67,3 +67,12 @@ export function playChime(step: number) {
   tone(ac, base, t, 0.35, 'triangle', 0.12)
   tone(ac, base * 2, t + 0.06, 0.3, 'square', 0.03)
 }
+
+/** The crowning: a quick rising flourish ending on a bright high note. */
+export function playCrown() {
+  const ac = audio()
+  if (!ac) return
+  const t = ac.currentTime + 0.02
+  ;[783.99, 987.77, 1174.66, 1567.98].forEach((f, i) => tone(ac, f, t + 0.45 + i * 0.07, i === 3 ? 0.6 : 0.12, 'square', 0.045))
+  tone(ac, 1567.98 / 2, t + 0.66, 0.7, 'triangle', 0.1)
+}

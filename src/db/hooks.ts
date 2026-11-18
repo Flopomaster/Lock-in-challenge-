@@ -23,3 +23,7 @@ export function useCurrentRun(): CurrentRun {
 }
 
 export const byOrder = (a: Encounter, b: Encounter) => a.order - b.order
+
+/** Party/box order with the run's ace up front. */
+export const aceFirst = (aceId: number | undefined) => (a: Encounter, b: Encounter) =>
+  Number(b.id === aceId) - Number(a.id === aceId) || a.order - b.order

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { NATURES, evolutionFamily, getSpecies, prettyAbility } from '../data/pokedex'
-import { displayName, moveTo, saveEncounter } from '../db/repository'
+import { displayName, moveTo, saveEncounter, setAce } from '../db/repository'
 import type { Encounter, Run } from '../db/types'
 import { useT } from '../lib/settings'
 import { spriteStyleForRun } from '../lib/sprites'
 import Sheet from './Sheet'
+import AceCrowning from './AceCrowning'
 import MovesEditor from './MovesEditor'
 import SpeciesPicker from './SpeciesPicker'
 import Sprite from './Sprite'
@@ -24,6 +25,8 @@ export default function PokemonSheet({ run, encounter, partyCount, onClose, onDe
   const style = spriteStyleForRun(run)
   const [draft, setDraft] = useState(encounter)
   const [evolving, setEvolving] = useState(false)
+  const [crowning, setCrowning] = useState(false)
+  const isAce = run.aceId === encounter.id
   const species = getSpecies(draft.speciesId)
   const set = (patch: Partial<Encounter>) => setDraft((d) => ({ ...d, ...patch }))
 
@@ -39,8 +42,17 @@ export default function PokemonSheet({ run, encounter, partyCount, onClose, onDe
   }
 
   return (
+    <>
+    {crowning && (
+      <AceCrowning speciesId={draft.speciesId} shiny={draft.shiny} name={displayName(draft)} style={style} onDone={() => setCrowning(false)} />
+    )}
     <Sheet
-      title={<bdi>{displayName(draft)}</bdi>}
+      title={
+        <span className="flex items-center gap-1.5">
+          {isAce && <span className="ace-crown">👑</span>}
+          <bdi>{displayName(draft)}</bdi>
+        </span>
+      }
       onClose={onClose}
       footer={
         <>
@@ -63,6 +75,19 @@ export default function PokemonSheet({ run, encounter, partyCount, onClose, onDe
             <div className="flex-1">
               <div className="font-bold">{species.name}</div>
               <div className="text-sm text-text-dim">{t('caughtAt', { location: draft.location })}</div>
+              <button
+                type="button"
+                onClick={async () => {
+                  await setAce(run, isAce ? undefined : encounter.id)
+                  if (!isAce) setCrowning(true)
+                }}
+                className={`mt-1 me-3 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-sm font-semibold ${
+                  isAce ? 'bg-[#ffcb05]/25 text-[#9a7400]' : 'bg-surface-hi text-text'
+                }`}
+              >
+                👑 {isAce ? t('isAce') : t('makeAce')}
+                {isAce && <span className="text-xs font-normal opacity-70">· {t('removeAce')}</span>}
+              </button>
               {evolutionFamily(species).length > 1 && (
                 <button type="button" onClick={() => setEvolving(true)} className="mt-1 text-sm font-semibold text-primary">
                   ✦ {t('evolve')}
@@ -153,5 +178,6 @@ export default function PokemonSheet({ run, encounter, partyCount, onClose, onDe
         </div>
       </div>
     </Sheet>
+    </>
   )
 }
