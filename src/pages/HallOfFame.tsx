@@ -67,7 +67,6 @@ function Plaque({ entry, number, lang, onReplay }: { entry: HallOfFameEntry; num
       <div className="grid grid-cols-3 gap-1 p-3">
         {entry.team.map((m, i) => (
           <div key={i} className={`relative flex flex-col items-center rounded-xl text-center ${m.ace ? 'ace-card border border-transparent' : ''}`}>
-            {m.ace && <span className="ace-crown absolute -top-2 start-1 text-base">👑</span>}
             <Sprite id={m.speciesId} style={style} size={64} shiny={m.shiny} />
             <div className="w-full truncate text-sm font-bold">
               <bdi>{m.nickname || getSpecies(m.speciesId)?.name}</bdi>
