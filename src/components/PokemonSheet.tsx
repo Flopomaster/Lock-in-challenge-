@@ -74,7 +74,7 @@ export default function PokemonSheet({ run, encounter, partyCount, onClose, onDe
       }
     >
       <div className="space-y-4">
-        {species && !picking && (
+        {species && picking !== 'evolve' && (
           <div className="flex items-center gap-3">
             <Sprite id={species.id} style={style} size={84} shiny={draft.shiny} />
             <div className="flex-1">
@@ -93,16 +93,11 @@ export default function PokemonSheet({ run, encounter, partyCount, onClose, onDe
                 👑 {isAce ? t('isAce') : t('makeAce')}
                 {isAce && <span className="text-xs font-normal opacity-70">· {t('removeAce')}</span>}
               </button>
-              <div className="flex flex-wrap gap-x-3">
-                {evolutionFamily(species).length > 1 && (
-                  <button type="button" onClick={() => setPicking('evolve')} className="mt-1 text-sm font-semibold text-primary">
-                    ✦ {t('evolve')}
-                  </button>
-                )}
-                <button type="button" onClick={() => setPicking('trade')} className="mt-1 text-sm font-semibold text-primary">
-                  🔁 {t('tradeAway')}
+              {evolutionFamily(species).length > 1 && (
+                <button type="button" onClick={() => setPicking('evolve')} className="mt-1 text-sm font-semibold text-primary">
+                  ✦ {t('evolve')}
                 </button>
-              </div>
+              )}
             </div>
           </div>
         )}
@@ -117,26 +112,6 @@ export default function PokemonSheet({ run, encounter, partyCount, onClose, onDe
             only={evolutionFamily(species)}
             startOpen
           />
-        )}
-        {species && picking === 'trade' && (
-          <div className="space-y-2">
-            <p className="text-sm text-text-dim">{t('tradeHint', { name: displayName(draft) })}</p>
-            <SpeciesPicker
-              value={undefined}
-              onChange={(id) => {
-                if (!id) return
-                setTradedFrom((f) => f ?? draft.speciesId)
-                // A different Pokémon: its own ability, moves and nickname.
-                set({ speciesId: id, ability: undefined, moves: undefined, nickname: undefined })
-                setPicking(null)
-              }}
-              style={style}
-              maxDex={runMaxDex(run)}
-            />
-            <button type="button" onClick={() => setPicking(null)} className="text-sm font-semibold text-text-dim">
-              {t('cancel')}
-            </button>
-          </div>
         )}
 
         <div className="grid grid-cols-3 gap-3">
@@ -213,6 +188,31 @@ export default function PokemonSheet({ run, encounter, partyCount, onClose, onDe
             placeholder={t('notesPlaceholder')}
           />
         </div>
+
+        {species && picking === 'trade' ? (
+          <div className="space-y-2">
+            <p className="text-sm text-text-dim">{t('tradeHint', { name: displayName(draft) })}</p>
+            <SpeciesPicker
+              value={undefined}
+              onChange={(id) => {
+                if (!id) return
+                setTradedFrom((f) => f ?? draft.speciesId)
+                // A different Pokémon: its own ability, moves and nickname.
+                set({ speciesId: id, ability: undefined, moves: undefined, nickname: undefined })
+                setPicking(null)
+              }}
+              style={style}
+              maxDex={runMaxDex(run)}
+            />
+            <button type="button" onClick={() => setPicking(null)} className="text-sm font-semibold text-text-dim">
+              {t('cancel')}
+            </button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setPicking('trade')} className="block w-full pt-2 text-center text-xs text-text-dim underline-offset-2 hover:underline">
+            🔁 {t('tradeAway')}
+          </button>
+        )}
       </div>
     </Sheet>
     </>
