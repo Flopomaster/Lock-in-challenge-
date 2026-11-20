@@ -113,9 +113,9 @@ export interface JournalEvent {
   id?: number
   runId: number
   at: number
-  kind: 'evolve' | 'boss' | 'ace'
+  kind: 'evolve' | 'trade' | 'boss' | 'ace'
   encounterId?: number
-  /** Evolution: species before and after. */
+  /** Evolution / in-game trade: species before and after. */
   from?: number
   to?: number
   bossId?: string

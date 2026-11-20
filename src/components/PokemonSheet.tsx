@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { getGame } from '../data/games'
 import { NATURES, evolutionFamily, getSpecies, prettyAbility } from '../data/pokedex'
-import { displayName, moveTo, saveEncounter, setAce } from '../db/repository'
+import { displayName, logTrade, moveTo, runMaxDex, saveEncounter, setAce } from '../db/repository'
 import type { Encounter, Run } from '../db/types'
 import { useT } from '../lib/settings'
 import { spriteStyleForRun } from '../lib/sprites'
@@ -25,7 +25,9 @@ export default function PokemonSheet({ run, encounter, partyCount, onClose, onDe
   const t = useT()
   const style = spriteStyleForRun(run)
   const [draft, setDraft] = useState(encounter)
-  const [evolving, setEvolving] = useState(false)
+  const [picking, setPicking] = useState<'evolve' | 'trade' | null>(null)
+  /** Species given away in an in-game trade (this encounter now holds what came back). */
+  const [tradedFrom, setTradedFrom] = useState<number>()
   const [crowning, setCrowning] = useState(false)
   const isAce = run.aceId === encounter.id
   const species = getSpecies(draft.speciesId)
@@ -33,11 +35,13 @@ export default function PokemonSheet({ run, encounter, partyCount, onClose, onDe
 
   async function save() {
     await saveEncounter({ ...draft, nickname: draft.nickname?.trim() || undefined })
+    if (tradedFrom && tradedFrom !== draft.speciesId) await logTrade(draft, tradedFrom)
     onClose()
   }
 
   async function move() {
     await saveEncounter(draft)
+    if (tradedFrom && tradedFrom !== draft.speciesId) await logTrade(draft, tradedFrom)
     await moveTo(draft, draft.status === 'party' ? 'box' : 'party')
     onClose()
   }
@@ -70,7 +74,7 @@ export default function PokemonSheet({ run, encounter, partyCount, onClose, onDe
       }
     >
       <div className="space-y-4">
-        {species && !evolving && (
+        {species && !picking && (
           <div className="flex items-center gap-3">
             <Sprite id={species.id} style={style} size={84} shiny={draft.shiny} />
             <div className="flex-1">
@@ -89,25 +93,50 @@ export default function PokemonSheet({ run, encounter, partyCount, onClose, onDe
                 👑 {isAce ? t('isAce') : t('makeAce')}
                 {isAce && <span className="text-xs font-normal opacity-70">· {t('removeAce')}</span>}
               </button>
-              {evolutionFamily(species).length > 1 && (
-                <button type="button" onClick={() => setEvolving(true)} className="mt-1 text-sm font-semibold text-primary">
-                  ✦ {t('evolve')}
+              <div className="flex flex-wrap gap-x-3">
+                {evolutionFamily(species).length > 1 && (
+                  <button type="button" onClick={() => setPicking('evolve')} className="mt-1 text-sm font-semibold text-primary">
+                    ✦ {t('evolve')}
+                  </button>
+                )}
+                <button type="button" onClick={() => setPicking('trade')} className="mt-1 text-sm font-semibold text-primary">
+                  🔁 {t('tradeAway')}
                 </button>
-              )}
+              </div>
             </div>
           </div>
         )}
-        {species && evolving && (
+        {species && picking === 'evolve' && (
           <SpeciesPicker
             value={draft.speciesId}
             onChange={(id) => {
               set({ speciesId: id, ability: undefined })
-              setEvolving(false)
+              setPicking(null)
             }}
             style={style}
             only={evolutionFamily(species)}
             startOpen
           />
+        )}
+        {species && picking === 'trade' && (
+          <div className="space-y-2">
+            <p className="text-sm text-text-dim">{t('tradeHint', { name: displayName(draft) })}</p>
+            <SpeciesPicker
+              value={undefined}
+              onChange={(id) => {
+                if (!id) return
+                setTradedFrom((f) => f ?? draft.speciesId)
+                // A different Pokémon: its own ability, moves and nickname.
+                set({ speciesId: id, ability: undefined, moves: undefined, nickname: undefined })
+                setPicking(null)
+              }}
+              style={style}
+              maxDex={runMaxDex(run)}
+            />
+            <button type="button" onClick={() => setPicking(null)} className="text-sm font-semibold text-text-dim">
+              {t('cancel')}
+            </button>
+          </div>
         )}
 
         <div className="grid grid-cols-3 gap-3">

@@ -117,6 +117,11 @@ export async function saveEncounter(enc: Encounter): Promise<void> {
   }
 }
 
+/** Journal: an in-game trade — the Pokémon caught here was swapped for another, which takes over the encounter. */
+export async function logTrade(enc: Encounter, from: number) {
+  if (enc.id) await db.journal.add({ runId: enc.runId, at: Date.now(), kind: 'trade', encounterId: enc.id, from, to: enc.speciesId })
+}
+
 export async function moveTo(enc: Encounter, status: EncounterStatus, death?: Death) {
   await db.encounters.update(enc.id!, {
     status,

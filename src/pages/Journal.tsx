@@ -14,7 +14,7 @@ import { spriteStyleForRun } from '../lib/sprites'
 type Entry =
   | { kind: 'start'; at: number }
   | { kind: 'catch' | 'miss' | 'death'; at: number; e: Encounter }
-  | { kind: 'evolve'; at: number; e?: Encounter; from: number; to: number }
+  | { kind: 'evolve' | 'trade'; at: number; e?: Encounter; from: number; to: number }
   | { kind: 'boss'; at: number; name: string; gym: boolean }
   | { kind: 'ace'; at: number; e: Encounter }
   | { kind: 'won' | 'lost' | 'hof'; at: number }
@@ -36,10 +36,10 @@ export default function Journal() {
   if (!extra) return null
 
   const byId = new Map(encounters.map((e) => [e.id, e]))
-  // The species each Pokémon was caught as: before its first logged evolution.
+  // The species each Pokémon was caught as: before its first logged evolution or trade.
   const caughtAs = new Map<number | undefined, number>()
   for (const j of [...extra.events].sort((a, b) => a.at - b.at))
-    if (j.kind === 'evolve' && j.from && !caughtAs.has(j.encounterId)) caughtAs.set(j.encounterId, j.from)
+    if ((j.kind === 'evolve' || j.kind === 'trade') && j.from && !caughtAs.has(j.encounterId)) caughtAs.set(j.encounterId, j.from)
   const entries: Entry[] = [{ kind: 'start', at: run.createdAt }]
   for (const e of encounters) {
     const asCaught = caughtAs.has(e.id) ? { ...e, speciesId: caughtAs.get(e.id) } : e
@@ -47,7 +47,7 @@ export default function Journal() {
     if (e.status === 'dead' && e.death?.at) entries.push({ kind: 'death', at: e.death.at, e })
   }
   for (const j of extra.events) {
-    if (j.kind === 'evolve' && j.from && j.to) entries.push({ kind: 'evolve', at: j.at, e: byId.get(j.encounterId), from: j.from, to: j.to })
+    if ((j.kind === 'evolve' || j.kind === 'trade') && j.from && j.to) entries.push({ kind: j.kind, at: j.at, e: byId.get(j.encounterId), from: j.from, to: j.to })
     if (j.kind === 'boss') entries.push({ kind: 'boss', at: j.at, name: j.bossName ?? '?', gym: !!j.gym })
     const crowned = j.kind === 'ace' ? byId.get(j.encounterId) : undefined
     if (crowned) entries.push({ kind: 'ace', at: j.at, e: crowned })
@@ -126,12 +126,12 @@ function Row({ entry, style }: { entry: Entry; style: ReturnType<typeof spriteSt
   const time = new Date(entry.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   const tone: Record<Entry['kind'], string> = {
     start: 'bg-primary-bg', catch: 'bg-surface', miss: 'bg-surface-hi/60 text-text-dim', death: 'bg-danger-bg',
-    evolve: 'bg-surface', boss: 'bg-warn-bg', ace: 'ace-card bg-surface', won: 'bg-good-bg', lost: 'bg-danger-bg', hof: 'hof-plaque',
+    evolve: 'bg-surface', trade: 'bg-surface', boss: 'bg-warn-bg', ace: 'ace-card bg-surface', won: 'bg-good-bg', lost: 'bg-danger-bg', hof: 'hof-plaque',
   }
   const sprite =
     entry.kind === 'catch' || entry.kind === 'miss' || entry.kind === 'death'
       ? <Sprite id={entry.e.speciesId} style={style} size={40} shiny={entry.e.shiny} dead={entry.kind !== 'catch'} />
-      : entry.kind === 'evolve'
+      : entry.kind === 'evolve' || entry.kind === 'trade'
         ? <Sprite id={entry.to} style={style} size={40} shiny={entry.e?.shiny} />
         : entry.kind === 'ace'
         ? <Sprite id={entry.e.speciesId} style={style} size={40} shiny={entry.e.shiny} />
@@ -196,6 +196,13 @@ function rich(entry: Entry, t: TFunction) {
           <b>{speciesName(entry.to)}</b>
         </>
       )
+    case 'trade':
+      return (
+        <>
+          🔁 <b>{speciesName(entry.from)}</b> {t('journalTraded')}
+          <b>{speciesName(entry.to)}</b>
+        </>
+      )
     case 'boss':
       return (
         <>
@@ -231,6 +238,8 @@ function plainText(entry: Entry, t: TFunction): string {
       return `🪦 ${displayName(entry.e)} ${t('journalFell')}${entry.e.death?.killer ? ` — ${entry.e.death.killer}` : ''}`
     case 'evolve':
       return `✨ ${entry.e ? displayName(entry.e) : speciesName(entry.from)} ${t('journalEvolved')}${speciesName(entry.to)}`
+    case 'trade':
+      return `🔁 ${speciesName(entry.from)} ${t('journalTraded')}${speciesName(entry.to)}`
     case 'boss':
       return `🏅 ${t('journalBeat')} ${entry.name}`
     case 'ace':
