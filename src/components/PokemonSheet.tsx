@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getGame } from '../data/games'
 import { NATURES, evolutionFamily, getSpecies, prettyAbility } from '../data/pokedex'
 import { displayName, moveTo, saveEncounter, setAce } from '../db/repository'
 import type { Encounter, Run } from '../db/types'
@@ -165,7 +166,14 @@ export default function PokemonSheet({ run, encounter, partyCount, onClose, onDe
         </div>
         <Toggle checked={!!draft.shiny} onChange={(v) => set({ shiny: v || undefined })} label={`✨ ${t('shiny')}`} />
 
-        <MovesEditor moves={draft.moves ?? []} gen={style.gen} onChange={(moves) => set({ moves: moves.length ? moves : undefined })} />
+        <MovesEditor
+          moves={draft.moves ?? []}
+          gen={style.gen}
+          speciesId={draft.speciesId}
+          versionGroup={run.customGame ? undefined : getGame(run.gameId)?.learnset}
+          level={draft.level}
+          onChange={(moves) => set({ moves: moves.length ? moves : undefined })}
+        />
 
         <div>
           <Label>{t('notes')}</Label>
